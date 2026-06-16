@@ -17,6 +17,7 @@ import { QRGenerator } from '@/components/tools/qr-generator';
 import { PasswordGenerator } from '@/components/tools/password-generator';
 import { UnitConverter } from '@/components/tools/unit-converter';
 import { TextUtils } from '@/components/tools/text-utils';
+import { StringComparison } from '@/components/tools/string-comparison';
 
 interface ToolItem {
   id: string;
@@ -53,6 +54,13 @@ const TOOLS: ToolItem[] = [
     description:
       'Encode/Decode URLs and Base64, count words, and transform text cases.',
     component: TextUtils,
+  },
+  {
+    id: 'string-comparison',
+    title: 'String Comparison',
+    description:
+      'Compare two strings character-by-character and highlight differences.',
+    component: StringComparison,
   },
 ];
 
