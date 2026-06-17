@@ -18,6 +18,7 @@ import { PasswordGenerator } from '@/components/tools/password-generator';
 import { UnitConverter } from '@/components/tools/unit-converter';
 import { TextUtils } from '@/components/tools/text-utils';
 import { StringComparison } from '@/components/tools/string-comparison';
+import { JSONFormatter } from '@/components/tools/json-formatter';
 
 interface ToolItem {
   id: string;
@@ -27,6 +28,13 @@ interface ToolItem {
 }
 
 const TOOLS: ToolItem[] = [
+  {
+    id: 'json-formatter',
+    title: 'JSON Formatter',
+    description:
+      'Format, validate, minify, and inspect JSON structures interactively.',
+    component: JSONFormatter,
+  },
   {
     id: 'qr-generator',
     title: 'QR Code Generator',
