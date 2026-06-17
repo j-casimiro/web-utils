@@ -1,5 +1,15 @@
-import { useState, useEffect } from 'react';
-import { Copy, Check, Trash2, ArrowRight, Play, Eye, FileText, ChevronDown, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Copy,
+  Check,
+  Trash2,
+  ArrowRight,
+  Play,
+  Eye,
+  FileText,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
@@ -34,7 +44,7 @@ const SAMPLE_JSON = `{
 // Recursive JSON Tree Node Component
 interface TreeNodeProps {
   name?: string;
-  value: any;
+  value: unknown;
   isLast?: boolean;
 }
 
@@ -55,18 +65,28 @@ function TreeNode({ name, value, isLast = true }: TreeNodeProps) {
     if (value === null) {
       valueElement = <span className="text-zinc-500 font-mono">null</span>;
     } else if (typeof value === 'string') {
-      valueElement = <span className="text-emerald-400 font-mono">"{value}"</span>;
+      valueElement = (
+        <span className="text-emerald-400 font-mono">"{value}"</span>
+      );
     } else if (typeof value === 'number') {
       valueElement = <span className="text-amber-400 font-mono">{value}</span>;
     } else if (typeof value === 'boolean') {
-      valueElement = <span className="text-purple-400 font-mono">{String(value)}</span>;
+      valueElement = (
+        <span className="text-purple-400 font-mono">{String(value)}</span>
+      );
     } else {
-      valueElement = <span className="text-zinc-300 font-mono">{String(value)}</span>;
+      valueElement = (
+        <span className="text-zinc-300 font-mono">{String(value)}</span>
+      );
     }
 
     return (
       <div className="pl-4 py-0.5 leading-relaxed text-xs">
-        {name && <span className="text-indigo-300 font-mono font-medium">"{name}": </span>}
+        {name && (
+          <span className="text-indigo-300 font-mono font-medium">
+            "{name}":{' '}
+          </span>
+        )}
         {valueElement}
         {!isLast && <span className="text-zinc-500">,</span>}
       </div>
@@ -74,19 +94,27 @@ function TreeNode({ name, value, isLast = true }: TreeNodeProps) {
   }
 
   // Render Object / Array collapsible node
-  const keys = isArray ? [] : Object.keys(value);
-  const length = isArray ? value.length : keys.length;
+  const keys = isArray ? [] : Object.keys(value as Record<string, unknown>);
+  const length = isArray ? (value as unknown[]).length : keys.length;
 
   return (
     <div className="pl-4 py-0.5 text-xs">
-      <div 
-        onClick={toggleOpen} 
+      <div
+        onClick={toggleOpen}
         className="flex items-center cursor-pointer select-none hover:bg-zinc-800/40 py-0.5 rounded px-1 -ml-1 transition-colors"
       >
         <span className="text-zinc-500 mr-0.5">
-          {isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          {isOpen ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
         </span>
-        {name && <span className="text-indigo-300 font-mono font-medium">"{name}": </span>}
+        {name && (
+          <span className="text-indigo-300 font-mono font-medium">
+            "{name}":{' '}
+          </span>
+        )}
         <span className="text-zinc-400 font-mono">
           {isArray ? '[' : '{'}
           {!isOpen && (
@@ -105,24 +133,22 @@ function TreeNode({ name, value, isLast = true }: TreeNodeProps) {
 
       {isOpen && (
         <div className="border-l border-zinc-800 ml-1.5 pl-1.5 my-0.5">
-          {isArray ? (
-            value.map((item: any, index: number) => (
-              <TreeNode 
-                key={index} 
-                value={item} 
-                isLast={index === length - 1} 
-              />
-            ))
-          ) : (
-            keys.map((key: string, index: number) => (
-              <TreeNode 
-                key={key} 
-                name={key} 
-                value={value[key]} 
-                isLast={index === length - 1} 
-              />
-            ))
-          )}
+          {isArray
+            ? (value as unknown[]).map((item: unknown, index: number) => (
+                <TreeNode
+                  key={index}
+                  value={item}
+                  isLast={index === length - 1}
+                />
+              ))
+            : keys.map((key: string, index: number) => (
+                <TreeNode
+                  key={key}
+                  name={key}
+                  value={(value as Record<string, unknown>)[key]}
+                  isLast={index === length - 1}
+                />
+              ))}
         </div>
       )}
 
@@ -139,54 +165,41 @@ function TreeNode({ name, value, isLast = true }: TreeNodeProps) {
 export function JSONFormatter() {
   const [inputText, setInputText] = useState('');
   const [outputText, setOutputText] = useState('');
-  const [parsedData, setParsedData] = useState<any>(null);
   const [indentSize, setIndentSize] = useState('2');
   const [viewMode, setViewMode] = useState<'text' | 'tree'>('text');
-  const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
 
-  // Validate JSON dynamically as the user types
-  useEffect(() => {
-    if (!inputText.trim()) {
-      setError('');
-      setParsedData(null);
-      return;
-    }
-
+  // Derive parsed data and validation error synchronously during render
+  let error = '';
+  let parsedData: unknown = null;
+  if (inputText.trim()) {
     try {
-      const parsed = JSON.parse(inputText);
-      setParsedData(parsed);
-      setError('');
-    } catch (err: any) {
-      setError(err.message || 'Invalid JSON syntax');
-      setParsedData(null);
+      parsedData = JSON.parse(inputText);
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Invalid JSON syntax';
     }
-  }, [inputText]);
+  }
 
   const handleBeautify = () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || error) return;
     try {
       const parsed = JSON.parse(inputText);
       const space = indentSize === 'tab' ? '\t' : parseInt(indentSize, 10);
       const formatted = JSON.stringify(parsed, null, space);
       setOutputText(formatted);
-      setParsedData(parsed);
-      setError('');
-    } catch (err: any) {
-      setError(err.message || 'Invalid JSON syntax');
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const handleMinify = () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || error) return;
     try {
       const parsed = JSON.parse(inputText);
       const minified = JSON.stringify(parsed);
       setOutputText(minified);
-      setParsedData(parsed);
-      setError('');
-    } catch (err: any) {
-      setError(err.message || 'Invalid JSON syntax');
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -205,8 +218,6 @@ export function JSONFormatter() {
   const handleClear = () => {
     setInputText('');
     setOutputText('');
-    setParsedData(null);
-    setError('');
   };
 
   const handleLoadSample = () => {
@@ -215,8 +226,6 @@ export function JSONFormatter() {
       const parsed = JSON.parse(SAMPLE_JSON);
       const space = indentSize === 'tab' ? '\t' : parseInt(indentSize, 10);
       setOutputText(JSON.stringify(parsed, null, space));
-      setParsedData(parsed);
-      setError('');
     } catch (err) {
       console.error(err);
     }
@@ -237,13 +246,17 @@ export function JSONFormatter() {
     // Tab key inserts indent
     if (e.key === 'Tab') {
       e.preventDefault();
-      const indent = indentSize === 'tab' ? '\t' : ' '.repeat(parseInt(indentSize, 10));
+      const indent =
+        indentSize === 'tab' ? '\t' : ' '.repeat(parseInt(indentSize, 10));
       const before = value.substring(0, start);
       const after = value.substring(end);
       setInputText(before + indent + after);
       setTimeout(() => {
         textarea.focus();
-        textarea.setSelectionRange(start + indent.length, start + indent.length);
+        textarea.setSelectionRange(
+          start + indent.length,
+          start + indent.length,
+        );
       }, 0);
       return;
     }
@@ -256,7 +269,8 @@ export function JSONFormatter() {
       const match = currentLine.match(/^(\s*)/);
       const currentIndent = match ? match[1] : '';
 
-      const indentUnit = indentSize === 'tab' ? '\t' : ' '.repeat(parseInt(indentSize, 10));
+      const indentUnit =
+        indentSize === 'tab' ? '\t' : ' '.repeat(parseInt(indentSize, 10));
       const charBefore = start > 0 ? value[start - 1] : '';
       const charAfter = start < value.length ? value[start] : '';
 
@@ -269,7 +283,8 @@ export function JSONFormatter() {
       if (isBracketOpen) {
         if (
           isBracketClose &&
-          ((charBefore === '{' && charAfter === '}') || (charBefore === '[' && charAfter === ']'))
+          ((charBefore === '{' && charAfter === '}') ||
+            (charBefore === '[' && charAfter === ']'))
         ) {
           insertion = '\n' + currentIndent + indentUnit + '\n' + currentIndent;
           cursorOffset = 1 + currentIndent.length + indentUnit.length;
@@ -347,7 +362,10 @@ export function JSONFormatter() {
         <div className="flex flex-wrap gap-4 items-center">
           {/* Indent Selector */}
           <div className="flex items-center space-x-2">
-            <Label htmlFor="indent-select" className="text-zinc-400 text-xs font-medium">
+            <Label
+              htmlFor="indent-select"
+              className="text-zinc-400 text-xs font-medium"
+            >
               Indentation:
             </Label>
             <select
@@ -410,9 +428,12 @@ export function JSONFormatter() {
       {/* Editor & View panels */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left Column: Input Textarea */}
-        <div className="space-y-2 flex flex-col h-[500px]">
+        <div className="space-y-2 flex flex-col h-125">
           <div className="flex justify-between items-center">
-            <Label htmlFor="json-input" className="text-zinc-300 text-sm font-semibold">
+            <Label
+              htmlFor="json-input"
+              className="text-zinc-300 text-sm font-semibold"
+            >
               Input JSON
             </Label>
             {inputText && (
@@ -432,7 +453,7 @@ export function JSONFormatter() {
         </div>
 
         {/* Right Column: Output / Tree View */}
-        <div className="space-y-2 flex flex-col h-[500px]">
+        <div className="space-y-2 flex flex-col h-125">
           <div className="flex justify-between items-center">
             {/* View Tabs */}
             <div className="flex space-x-1 bg-zinc-950 border border-zinc-800 p-0.5 rounded-md">
@@ -481,8 +502,12 @@ export function JSONFormatter() {
           <div className="flex-1 w-full rounded-md border border-zinc-800 bg-zinc-950 overflow-auto relative">
             {error ? (
               <div className="absolute inset-0 p-4 bg-red-950/10 text-red-400 font-mono text-xs flex flex-col space-y-2">
-                <span className="font-semibold text-red-500">Syntax Error:</span>
-                <span className="whitespace-pre-wrap leading-relaxed">{error}</span>
+                <span className="font-semibold text-red-500">
+                  Syntax Error:
+                </span>
+                <span className="whitespace-pre-wrap leading-relaxed">
+                  {error}
+                </span>
               </div>
             ) : !inputText ? (
               <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs italic">
