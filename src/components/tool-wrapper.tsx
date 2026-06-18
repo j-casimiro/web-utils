@@ -17,7 +17,7 @@ export function ToolWrapper({
   children,
 }: ToolWrapperProps) {
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex items-center space-x-4">
         <Button
           variant="outline"

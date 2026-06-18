@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Github } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Card,
@@ -22,6 +22,7 @@ import { JSONFormatter } from '@/components/tools/json-formatter';
 import { JWTDecoder } from '@/components/tools/jwt-decoder';
 import { HashGenerator } from '@/components/tools/hash-generator';
 import { LoremGenerator } from '@/components/tools/lorem-generator';
+import { ColorConverter } from '@/components/tools/color-converter';
 
 interface ToolItem {
   id: string;
@@ -58,6 +59,13 @@ const TOOLS: ToolItem[] = [
     description:
       'Generate customizable dummy text, paragraphs, sentences, words, or lists.',
     component: LoremGenerator,
+  },
+  {
+    id: 'color-converter',
+    title: 'Color Converter & Palette Builder',
+    description:
+      'Convert HEX, RGB, HSL, and CMYK colors, build harmonious palettes, and check accessibility contrast.',
+    component: ColorConverter,
   },
   {
     id: 'qr-generator',
@@ -187,8 +195,17 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-black py-8 mt-12 text-center text-[12px] text-zinc-500 font-mono">
+      <footer className="border-t border-border bg-black py-8 mt-12 text-center text-[12px] text-zinc-500 font-mono flex flex-col items-center justify-center gap-3">
         <p>built by j-casimiro</p>
+        <a
+          href="https://github.com/j-casimiro/web-utils"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-950 hover:border-zinc-700 transition-all text-[11px] font-sans"
+        >
+          <Github className="h-3.5 w-3.5" />
+          <span>View on GitHub</span>
+        </a>
       </footer>
     </div>
   );
