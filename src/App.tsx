@@ -21,6 +21,7 @@ import { StringComparison } from '@/components/tools/string-comparison';
 import { JSONFormatter } from '@/components/tools/json-formatter';
 import { JWTDecoder } from '@/components/tools/jwt-decoder';
 import { HashGenerator } from '@/components/tools/hash-generator';
+import { LoremGenerator } from '@/components/tools/lorem-generator';
 
 interface ToolItem {
   id: string;
@@ -50,6 +51,13 @@ const TOOLS: ToolItem[] = [
     description:
       'Compute MD5, SHA-1, SHA-256, and SHA-512 hashes or HMAC signatures for text inputs.',
     component: HashGenerator,
+  },
+  {
+    id: 'lorem-generator',
+    title: 'Lorem Ipsum Generator',
+    description:
+      'Generate customizable dummy text, paragraphs, sentences, words, or lists.',
+    component: LoremGenerator,
   },
   {
     id: 'qr-generator',
