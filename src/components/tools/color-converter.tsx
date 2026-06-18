@@ -3,20 +3,42 @@ import { Copy, Check, Shuffle, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
-interface RGB { r: number; g: number; b: number; }
-interface HSL { h: number; s: number; l: number; }
-interface CMYK { c: number; m: number; y: number; k: number; }
+interface RGB {
+  r: number;
+  g: number;
+  b: number;
+}
+interface HSL {
+  h: number;
+  s: number;
+  l: number;
+}
+interface CMYK {
+  c: number;
+  m: number;
+  y: number;
+  k: number;
+}
 
 // --- Conversion Helpers ---
 
 function rgbToHex({ r, g, b }: RGB): string {
-  return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+  return (
+    '#' +
+    [r, g, b]
+      .map((x) => x.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase()
+  );
 }
 
 function hexToRgb(hex: string): RGB | null {
   const cleanHex = hex.replace(/^#/, '').trim();
   if (cleanHex.length === 3) {
-    const expanded = cleanHex.split('').map(char => char + char).join('');
+    const expanded = cleanHex
+      .split('')
+      .map((char) => char + char)
+      .join('');
     const num = parseInt(expanded, 16);
     if (isNaN(num)) return null;
     return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
@@ -30,55 +52,71 @@ function hexToRgb(hex: string): RGB | null {
 }
 
 function rgbToHsl({ r, g, b }: RGB): HSL {
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0;
+  r /= 255;
+  g /= 255;
+  b /= 255;
+  const max = Math.max(r, g, b),
+    min = Math.min(r, g, b);
+  let h = 0,
+    s = 0;
   const l = (max + min) / 2;
 
   if (max !== min) {
     const d = max - min;
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
     }
     h /= 6;
   }
   return {
     h: Math.round(h * 360),
     s: Math.round(s * 100),
-    l: Math.round(l * 100)
+    l: Math.round(l * 100),
   };
 }
 
 function hslToRgb({ h, s, l }: HSL): RGB {
-  h /= 360; s /= 100; l /= 100;
-  let r = l, g = l, b = l;
+  h /= 360;
+  s /= 100;
+  l /= 100;
+  let r = l,
+    g = l,
+    b = l;
   if (s !== 0) {
     const hue2rgb = (p: number, q: number, t: number) => {
       if (t < 0) t += 1;
       if (t > 1) t -= 1;
-      if (t < 1/6) return p + (q - p) * 6 * t;
-      if (t < 1/2) return q;
-      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
       return p;
     };
     const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
     const p = 2 * l - q;
-    r = hue2rgb(p, q, h + 1/3);
+    r = hue2rgb(p, q, h + 1 / 3);
     g = hue2rgb(p, q, h);
-    b = hue2rgb(p, q, h - 1/3);
+    b = hue2rgb(p, q, h - 1 / 3);
   }
   return {
     r: Math.round(r * 255),
     g: Math.round(g * 255),
-    b: Math.round(b * 255)
+    b: Math.round(b * 255),
   };
 }
 
 function rgbToCmyk({ r, g, b }: RGB): CMYK {
-  r /= 255; g /= 255; b /= 255;
+  r /= 255;
+  g /= 255;
+  b /= 255;
   const k = 1 - Math.max(r, g, b);
   if (k === 1) return { c: 0, m: 0, y: 0, k: 100 };
   const c = (1 - r - k) / (1 - k);
@@ -88,12 +126,15 @@ function rgbToCmyk({ r, g, b }: RGB): CMYK {
     c: Math.round(c * 100),
     m: Math.round(m * 100),
     y: Math.round(y * 100),
-    k: Math.round(k * 100)
+    k: Math.round(k * 100),
   };
 }
 
 function cmykToRgb({ c, m, y, k }: CMYK): RGB {
-  c /= 100; m /= 100; y /= 100; k /= 100;
+  c /= 100;
+  m /= 100;
+  y /= 100;
+  k /= 100;
   const r = Math.round(255 * (1 - c) * (1 - k));
   const g = Math.round(255 * (1 - m) * (1 - k));
   const b = Math.round(255 * (1 - y) * (1 - k));
@@ -103,7 +144,7 @@ function cmykToRgb({ c, m, y, k }: CMYK): RGB {
 // --- WCAG Contrast Helpers ---
 
 function getLuminance({ r, g, b }: RGB): number {
-  const a = [r, g, b].map(v => {
+  const a = [r, g, b].map((v) => {
     v /= 255;
     return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
   });
@@ -123,7 +164,7 @@ function getContrastStatus(ratio: number) {
     aaNormal: ratio >= 4.5,
     aaaNormal: ratio >= 7.0,
     aaLarge: ratio >= 3.0,
-    aaaLarge: ratio >= 4.5
+    aaaLarge: ratio >= 4.5,
   };
 }
 
@@ -133,11 +174,21 @@ export function ColorConverter() {
   const [hslVal, setHslVal] = useState('217, 91%, 60%');
   const [cmykVal, setCmykVal] = useState('76, 47, 0, 4');
 
-  const [activeColor, setActiveColor] = useState<RGB>({ r: 59, g: 130, b: 246 });
+  const [activeColor, setActiveColor] = useState<RGB>({
+    r: 59,
+    g: 130,
+    b: 246,
+  });
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
   // Common sync helper to update inputs safely while typing
-  const updateColorFromRgb = (rgb: RGB, skipHex = false, skipRgb = false, skipHsl = false, skipCmyk = false) => {
+  const updateColorFromRgb = (
+    rgb: RGB,
+    skipHex = false,
+    skipRgb = false,
+    skipHsl = false,
+    skipCmyk = false,
+  ) => {
     setActiveColor(rgb);
     if (!skipHex) setHexVal(rgbToHex(rgb));
     if (!skipRgb) setRgbVal(`${rgb.r}, ${rgb.g}, ${rgb.b}`);
@@ -179,7 +230,9 @@ export function ColorConverter() {
 
   const handleCmykChange = (val: string) => {
     setCmykVal(val);
-    const match = val.match(/^(\d+)%?\s*,\s*(\d+)%?\s*,\s*(\d+)%?\s*,\s*(\d+)%?$/);
+    const match = val.match(
+      /^(\d+)%?\s*,\s*(\d+)%?\s*,\s*(\d+)%?\s*,\s*(\d+)%?$/,
+    );
     if (match) {
       const c = Math.min(100, parseInt(match[1], 10));
       const m = Math.min(100, parseInt(match[2], 10));
@@ -207,8 +260,12 @@ export function ColorConverter() {
   };
 
   // Contrast Status against Black & White
-  const whiteContrast = getContrastStatus(getContrastRatio(activeColor, { r: 255, g: 255, b: 255 }));
-  const blackContrast = getContrastStatus(getContrastRatio(activeColor, { r: 0, g: 0, b: 0 }));
+  const whiteContrast = getContrastStatus(
+    getContrastRatio(activeColor, { r: 255, g: 255, b: 255 }),
+  );
+  const blackContrast = getContrastStatus(
+    getContrastRatio(activeColor, { r: 0, g: 0, b: 0 }),
+  );
 
   // Color Harmonies
   const activeHsl = rgbToHsl(activeColor);
@@ -217,10 +274,9 @@ export function ColorConverter() {
     {
       title: 'Complementary',
       description: 'Hues directly opposite on the color wheel (180° offset).',
-      swatches: [
-        activeHsl,
-        { ...activeHsl, h: (activeHsl.h + 180) % 360 }
-      ].map(hslToRgb).map(rgbToHex)
+      swatches: [activeHsl, { ...activeHsl, h: (activeHsl.h + 180) % 360 }]
+        .map(hslToRgb)
+        .map(rgbToHex),
     },
     {
       title: 'Analogous',
@@ -230,8 +286,10 @@ export function ColorConverter() {
         { ...activeHsl, h: (activeHsl.h - 15 + 360) % 360 },
         activeHsl,
         { ...activeHsl, h: (activeHsl.h + 15) % 360 },
-        { ...activeHsl, h: (activeHsl.h + 30) % 360 }
-      ].map(hslToRgb).map(rgbToHex)
+        { ...activeHsl, h: (activeHsl.h + 30) % 360 },
+      ]
+        .map(hslToRgb)
+        .map(rgbToHex),
     },
     {
       title: 'Triadic',
@@ -239,29 +297,44 @@ export function ColorConverter() {
       swatches: [
         activeHsl,
         { ...activeHsl, h: (activeHsl.h + 120) % 360 },
-        { ...activeHsl, h: (activeHsl.h + 240) % 360 }
-      ].map(hslToRgb).map(rgbToHex)
+        { ...activeHsl, h: (activeHsl.h + 240) % 360 },
+      ]
+        .map(hslToRgb)
+        .map(rgbToHex),
     },
     {
       title: 'Monochromatic',
       description: 'Varying saturation and lightness within the same hue.',
       swatches: [
         { ...activeHsl, l: Math.max(activeHsl.l - 30, 10) },
-        { ...activeHsl, s: Math.max(activeHsl.s - 20, 10), l: Math.max(activeHsl.l - 15, 15) },
+        {
+          ...activeHsl,
+          s: Math.max(activeHsl.s - 20, 10),
+          l: Math.max(activeHsl.l - 15, 15),
+        },
         activeHsl,
-        { ...activeHsl, s: Math.min(activeHsl.s + 15, 100), l: Math.min(activeHsl.l + 15, 85) },
-        { ...activeHsl, l: Math.min(activeHsl.l + 30, 90) }
-      ].map(hslToRgb).map(rgbToHex)
+        {
+          ...activeHsl,
+          s: Math.min(activeHsl.s + 15, 100),
+          l: Math.min(activeHsl.l + 15, 85),
+        },
+        { ...activeHsl, l: Math.min(activeHsl.l + 30, 90) },
+      ]
+        .map(hslToRgb)
+        .map(rgbToHex),
     },
     {
       title: 'Split-Complementary',
-      description: 'Base hue plus the two hues adjacent to its complementary color (150° and 210° offsets).',
+      description:
+        'Base hue plus the two hues adjacent to its complementary color (150° and 210° offsets).',
       swatches: [
         activeHsl,
         { ...activeHsl, h: (activeHsl.h + 150) % 360 },
-        { ...activeHsl, h: (activeHsl.h + 210) % 360 }
-      ].map(hslToRgb).map(rgbToHex)
-    }
+        { ...activeHsl, h: (activeHsl.h + 210) % 360 },
+      ]
+        .map(hslToRgb)
+        .map(rgbToHex),
+    },
   ];
 
   return (
@@ -287,19 +360,26 @@ export function ColorConverter() {
           {/* Color Preview, Picker & HSL Adjusters */}
           <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 space-y-4">
             <div className="flex items-center space-x-4">
-              <div 
+              <div
                 className="w-24 h-24 rounded-lg shadow-inner border border-zinc-800 shrink-0 transition-colors duration-200"
                 style={{ backgroundColor: hexVal }}
               />
               <div className="space-y-2 flex-1">
-                <Label htmlFor="color-picker" className="text-zinc-400 text-xs font-semibold uppercase tracking-wider font-mono">
+                <Label
+                  htmlFor="color-picker"
+                  className="text-zinc-400 text-xs font-semibold uppercase tracking-wider font-mono"
+                >
                   Color Picker
                 </Label>
                 <div className="flex space-x-2">
                   <input
                     id="color-picker"
                     type="color"
-                    value={hexVal.startsWith('#') && hexVal.length === 7 ? hexVal : '#3B82F6'}
+                    value={
+                      hexVal.startsWith('#') && hexVal.length === 7
+                        ? hexVal
+                        : '#3B82F6'
+                    }
                     onChange={(e) => handleHexChange(e.target.value)}
                     className="w-10 h-8 rounded border border-zinc-850 bg-zinc-900 cursor-pointer p-0"
                   />
@@ -311,8 +391,10 @@ export function ColorConverter() {
             </div>
 
             <div className="border-t border-zinc-900 pt-4 space-y-3">
-              <span className="text-zinc-500 text-[10px] font-mono font-semibold uppercase tracking-wider block">Interactive Adjustments (HSL)</span>
-              
+              <span className="text-zinc-500 text-[10px] font-mono font-semibold uppercase tracking-wider block">
+                Interactive Adjustments (HSL)
+              </span>
+
               {/* Hue Slider */}
               <div className="space-y-1">
                 <div className="flex justify-between text-[11px] font-mono text-zinc-400">
@@ -331,7 +413,8 @@ export function ColorConverter() {
                   }}
                   className="w-full h-2 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-zinc-100 [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-zinc-800 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-zinc-100 [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-zinc-800 [&::-moz-range-thumb]:shadow-lg"
                   style={{
-                    background: 'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)'
+                    background:
+                      'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)',
                   }}
                 />
               </div>
@@ -354,7 +437,7 @@ export function ColorConverter() {
                   }}
                   className="w-full h-2 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-zinc-100 [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-zinc-800 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-zinc-100 [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-zinc-800 [&::-moz-range-thumb]:shadow-lg"
                   style={{
-                    background: `linear-gradient(to right, hsl(${activeHsl.h}, 0%, ${activeHsl.l}%), hsl(${activeHsl.h}, 100%, ${activeHsl.l}%))`
+                    background: `linear-gradient(to right, hsl(${activeHsl.h}, 0%, ${activeHsl.l}%), hsl(${activeHsl.h}, 100%, ${activeHsl.l}%))`,
                   }}
                 />
               </div>
@@ -377,7 +460,7 @@ export function ColorConverter() {
                   }}
                   className="w-full h-2 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-zinc-100 [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-zinc-800 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-zinc-100 [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-zinc-800 [&::-moz-range-thumb]:shadow-lg"
                   style={{
-                    background: `linear-gradient(to right, #000000, hsl(${activeHsl.h}, ${activeHsl.s}%, 50%), #ffffff)`
+                    background: `linear-gradient(to right, #000000, hsl(${activeHsl.h}, ${activeHsl.s}%, 50%), #ffffff)`,
                   }}
                 />
               </div>
@@ -393,13 +476,22 @@ export function ColorConverter() {
             {/* HEX Input */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <Label htmlFor="hex-input" className="text-zinc-400 text-xs font-medium font-mono">HEX</Label>
+                <Label
+                  htmlFor="hex-input"
+                  className="text-zinc-400 text-xs font-medium font-mono"
+                >
+                  HEX
+                </Label>
                 <button
                   onClick={() => copyToClipboard(hexVal, 'hex')}
                   className="text-zinc-500 hover:text-zinc-200 p-0.5"
                   title="Copy HEX"
                 >
-                  {copiedText === 'hex' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                  {copiedText === 'hex' ? (
+                    <Check className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
                 </button>
               </div>
               <input
@@ -414,13 +506,22 @@ export function ColorConverter() {
             {/* RGB Input */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <Label htmlFor="rgb-input" className="text-zinc-400 text-xs font-medium font-mono">RGB (R, G, B)</Label>
+                <Label
+                  htmlFor="rgb-input"
+                  className="text-zinc-400 text-xs font-medium font-mono"
+                >
+                  RGB (R, G, B)
+                </Label>
                 <button
                   onClick={() => copyToClipboard(`rgb(${rgbVal})`, 'rgb')}
                   className="text-zinc-500 hover:text-zinc-200 p-0.5"
                   title="Copy RGB"
                 >
-                  {copiedText === 'rgb' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                  {copiedText === 'rgb' ? (
+                    <Check className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
                 </button>
               </div>
               <input
@@ -435,13 +536,22 @@ export function ColorConverter() {
             {/* HSL Input */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <Label htmlFor="hsl-input" className="text-zinc-400 text-xs font-medium font-mono">HSL (H, S%, L%)</Label>
+                <Label
+                  htmlFor="hsl-input"
+                  className="text-zinc-400 text-xs font-medium font-mono"
+                >
+                  HSL (H, S%, L%)
+                </Label>
                 <button
                   onClick={() => copyToClipboard(`hsl(${hslVal})`, 'hsl')}
                   className="text-zinc-500 hover:text-zinc-200 p-0.5"
                   title="Copy HSL"
                 >
-                  {copiedText === 'hsl' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                  {copiedText === 'hsl' ? (
+                    <Check className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
                 </button>
               </div>
               <input
@@ -456,13 +566,22 @@ export function ColorConverter() {
             {/* CMYK Input */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <Label htmlFor="cmyk-input" className="text-zinc-400 text-xs font-medium font-mono">CMYK (C, M, Y, K)</Label>
+                <Label
+                  htmlFor="cmyk-input"
+                  className="text-zinc-400 text-xs font-medium font-mono"
+                >
+                  CMYK (C, M, Y, K)
+                </Label>
                 <button
                   onClick={() => copyToClipboard(`cmyk(${cmykVal})`, 'cmyk')}
                   className="text-zinc-500 hover:text-zinc-200 p-0.5"
                   title="Copy CMYK"
                 >
-                  {copiedText === 'cmyk' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                  {copiedText === 'cmyk' ? (
+                    <Check className="h-3 w-3 text-emerald-400" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
                 </button>
               </div>
               <input
@@ -484,10 +603,14 @@ export function ColorConverter() {
               {/* White Text Contrast */}
               <div className="bg-zinc-900/40 border border-zinc-850 p-3 rounded space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-zinc-400 font-mono">vs White (#FFF)</span>
-                  <span className="text-xs font-mono font-bold text-zinc-200">{whiteContrast.ratio}:1</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">
+                    vs White (#FFF)
+                  </span>
+                  <span className="text-xs font-mono font-bold text-zinc-200">
+                    {whiteContrast.ratio}:1
+                  </span>
                 </div>
-                <div 
+                <div
                   className="h-10 rounded text-xs font-semibold flex items-center justify-center border border-zinc-800 transition-colors"
                   style={{ backgroundColor: hexVal, color: '#FFFFFF' }}
                 >
@@ -497,17 +620,25 @@ export function ColorConverter() {
                   <div className="flex justify-between items-center">
                     <span className="text-zinc-500">Normal Text</span>
                     {whiteContrast.aaNormal ? (
-                      <span className="text-emerald-400 flex items-center"><CheckCircle2 className="h-3 w-3 mr-0.5" /> AA</span>
+                      <span className="text-emerald-400 flex items-center">
+                        <CheckCircle2 className="h-3 w-3 mr-0.5" /> AA
+                      </span>
                     ) : (
-                      <span className="text-red-400 flex items-center"><XCircle className="h-3 w-3 mr-0.5" /> Fail</span>
+                      <span className="text-red-400 flex items-center">
+                        <XCircle className="h-3 w-3 mr-0.5" /> Fail
+                      </span>
                     )}
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-zinc-500">Large Text</span>
                     {whiteContrast.aaaNormal ? (
-                      <span className="text-emerald-400 flex items-center"><CheckCircle2 className="h-3 w-3 mr-0.5" /> AAA</span>
+                      <span className="text-emerald-400 flex items-center">
+                        <CheckCircle2 className="h-3 w-3 mr-0.5" /> AAA
+                      </span>
                     ) : (
-                      <span className="text-red-400 flex items-center"><XCircle className="h-3 w-3 mr-0.5" /> Fail</span>
+                      <span className="text-red-400 flex items-center">
+                        <XCircle className="h-3 w-3 mr-0.5" /> Fail
+                      </span>
                     )}
                   </div>
                 </div>
@@ -516,10 +647,14 @@ export function ColorConverter() {
               {/* Black Text Contrast */}
               <div className="bg-zinc-900/40 border border-zinc-850 p-3 rounded space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] text-zinc-400 font-mono">vs Black (#000)</span>
-                  <span className="text-xs font-mono font-bold text-zinc-200">{blackContrast.ratio}:1</span>
+                  <span className="text-[10px] text-zinc-400 font-mono">
+                    vs Black (#000)
+                  </span>
+                  <span className="text-xs font-mono font-bold text-zinc-200">
+                    {blackContrast.ratio}:1
+                  </span>
                 </div>
-                <div 
+                <div
                   className="h-10 rounded text-xs font-semibold flex items-center justify-center border border-zinc-800 transition-colors"
                   style={{ backgroundColor: hexVal, color: '#000000' }}
                 >
@@ -529,17 +664,25 @@ export function ColorConverter() {
                   <div className="flex justify-between items-center">
                     <span className="text-zinc-500">Normal Text</span>
                     {blackContrast.aaNormal ? (
-                      <span className="text-emerald-400 flex items-center"><CheckCircle2 className="h-3 w-3 mr-0.5" /> AA</span>
+                      <span className="text-emerald-400 flex items-center">
+                        <CheckCircle2 className="h-3 w-3 mr-0.5" /> AA
+                      </span>
                     ) : (
-                      <span className="text-red-400 flex items-center"><XCircle className="h-3 w-3 mr-0.5" /> Fail</span>
+                      <span className="text-red-400 flex items-center">
+                        <XCircle className="h-3 w-3 mr-0.5" /> Fail
+                      </span>
                     )}
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-zinc-500">Large Text</span>
                     {blackContrast.aaaNormal ? (
-                      <span className="text-emerald-400 flex items-center"><CheckCircle2 className="h-3 w-3 mr-0.5" /> AAA</span>
+                      <span className="text-emerald-400 flex items-center">
+                        <CheckCircle2 className="h-3 w-3 mr-0.5" /> AAA
+                      </span>
                     ) : (
-                      <span className="text-red-400 flex items-center"><XCircle className="h-3 w-3 mr-0.5" /> Fail</span>
+                      <span className="text-red-400 flex items-center">
+                        <XCircle className="h-3 w-3 mr-0.5" /> Fail
+                      </span>
                     )}
                   </div>
                 </div>
@@ -549,27 +692,39 @@ export function ColorConverter() {
         </div>
 
         {/* Right Column: Color Harmonies / Palettes (lg:span-7) */}
-        <div className="lg:col-span-7 bg-zinc-950 border border-zinc-800 rounded-lg p-5 space-y-6 h-[650px] overflow-y-auto pr-1">
+        <div className="lg:col-span-7 bg-zinc-950 border border-zinc-800 rounded-lg p-5 space-y-6 h-162.5 overflow-y-auto pr-1">
           <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider font-mono block border-b border-zinc-900 pb-2">
             Harmonic Palettes
           </span>
 
           <div className="space-y-6">
             {harmonies.map((harmony, harmonyIdx) => (
-              <div key={harmonyIdx} className="space-y-3 border-b border-zinc-900 pb-5 last:border-b-0 last:pb-0">
+              <div
+                key={harmonyIdx}
+                className="space-y-3 border-b border-zinc-900 pb-5 last:border-b-0 last:pb-0"
+              >
                 <div>
-                  <h3 className="text-xs font-bold text-zinc-200 font-mono">{harmony.title}</h3>
-                  <p className="text-[10px] text-zinc-500 font-mono leading-relaxed">{harmony.description}</p>
+                  <h3 className="text-xs font-bold text-zinc-200 font-mono">
+                    {harmony.title}
+                  </h3>
+                  <p className="text-[10px] text-zinc-500 font-mono leading-relaxed">
+                    {harmony.description}
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   {harmony.swatches.map((swatchHex, swatchIdx) => (
-                    <div 
-                      key={swatchIdx} 
+                    <div
+                      key={swatchIdx}
                       className="bg-zinc-900/40 border border-zinc-850 rounded-lg p-2 flex flex-col space-y-2 group relative transition-all duration-200 hover:border-zinc-750"
                     >
                       {/* Swatch color block */}
                       <div
-                        onClick={() => copyToClipboard(swatchHex, `swatch-${harmonyIdx}-${swatchIdx}`)}
+                        onClick={() =>
+                          copyToClipboard(
+                            swatchHex,
+                            `swatch-${harmonyIdx}-${swatchIdx}`,
+                          )
+                        }
                         className="w-full h-14 rounded-md border border-zinc-950/40 relative shadow-inner cursor-pointer"
                         style={{ backgroundColor: swatchHex }}
                         title="Click to copy HEX"
@@ -577,14 +732,18 @@ export function ColorConverter() {
                         {/* Hover Overlay */}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md">
                           <span className="text-[9px] font-bold text-white font-mono bg-zinc-900/90 px-1.5 py-0.5 rounded shadow">
-                            {copiedText === `swatch-${harmonyIdx}-${swatchIdx}` ? 'Copied!' : 'Copy'}
+                            {copiedText === `swatch-${harmonyIdx}-${swatchIdx}`
+                              ? 'Copied!'
+                              : 'Copy'}
                           </span>
                         </div>
                       </div>
 
                       {/* Info & Set-As-Base Control */}
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-mono text-zinc-300 font-bold">{swatchHex}</span>
+                        <span className="text-[10px] font-mono text-zinc-300 font-bold">
+                          {swatchHex}
+                        </span>
                         <button
                           onClick={() => handleHexChange(swatchHex)}
                           className="text-zinc-500 hover:text-zinc-200 transition-colors p-0.5 rounded hover:bg-zinc-800"
