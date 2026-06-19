@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Copy, Check, Trash2, Keyboard, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -116,6 +116,7 @@ export function KeyboardInspector() {
   const [preventDefault, setPreventDefault] = useState(true);
   const [isListening, setIsListening] = useState(true);
   const [jsonCopied, setJsonCopied] = useState(false);
+  const lastEventRef = useRef<ParsedEvent | null>(null);
 
   useEffect(() => {
     if (!isListening) return;
@@ -147,34 +148,59 @@ export function KeyboardInspector() {
         }
       }
 
-      setPressedKeys((prev) => ({ ...prev, [e.code]: true }));
+      setPressedKeys((prev) => {
+        if (prev[e.code]) return prev;
+        return { ...prev, [e.code]: true };
+      });
 
-      const parsed: ParsedEvent = {
-        key: e.key,
-        code: e.code,
-        which: e.which,
-        keyCode: e.keyCode,
-        location: e.location,
-        repeat: e.repeat,
-        isComposing: e.isComposing,
-        altKey: e.altKey,
-        ctrlKey: e.ctrlKey,
-        metaKey: e.metaKey,
-        shiftKey: e.shiftKey,
-        timestamp: Date.now(),
-      };
+      const isIdentical =
+        lastEventRef.current &&
+        lastEventRef.current.code === e.code &&
+        lastEventRef.current.repeat === e.repeat &&
+        lastEventRef.current.shiftKey === e.shiftKey &&
+        lastEventRef.current.altKey === e.altKey &&
+        lastEventRef.current.ctrlKey === e.ctrlKey &&
+        lastEventRef.current.metaKey === e.metaKey;
 
-      setLastEvent(parsed);
-      setHistory((prev) => [parsed, ...prev].slice(0, 15));
+      if (!isIdentical) {
+        const parsed: ParsedEvent = {
+          key: e.key,
+          code: e.code,
+          which: e.which,
+          keyCode: e.keyCode,
+          location: e.location,
+          repeat: e.repeat,
+          isComposing: e.isComposing,
+          altKey: e.altKey,
+          ctrlKey: e.ctrlKey,
+          metaKey: e.metaKey,
+          shiftKey: e.shiftKey,
+          timestamp: Date.now(),
+        };
+
+        lastEventRef.current = parsed;
+        setLastEvent(parsed);
+
+        if (!e.repeat) {
+          setHistory((prev) => [parsed, ...prev].slice(0, 15));
+        }
+      }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      setPressedKeys((prev) => ({ ...prev, [e.code]: false }));
+      setPressedKeys((prev) => {
+        if (!prev[e.code]) return prev;
+        const next = { ...prev };
+        next[e.code] = false;
+        return next;
+      });
+      lastEventRef.current = null;
     };
 
     const handleBlur = () => {
       // Clear pressed keys when focus is lost to prevent stuck active styles
       setPressedKeys({});
+      lastEventRef.current = null;
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -245,10 +271,10 @@ export function KeyboardInspector() {
           height: heightStyle,
           flexGrow: isFlexGrow ? 1 : 0,
         }}
-        className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
+        className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
           isActive
             ? 'bg-zinc-100 text-zinc-950 border-zinc-100 shadow-[0_0_12px_rgba(244,244,245,0.4)] font-semibold scale-[0.98]'
-            : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700'
+            : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
         } ${key.labelClass || 'whitespace-pre-line text-center p-1'}`}
       >
         {key.label}
@@ -347,20 +373,20 @@ export function KeyboardInspector() {
               <div className="flex gap-1 justify-between w-full">
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex items-center justify-center border text-[9px] font-medium transition-all select-none rounded p-1 whitespace-pre-line text-left ${
+                  className={`flex-shrink-0 flex items-center justify-center border text-[9px] font-medium select-none rounded p-1 whitespace-pre-line text-left ${
                     pressedKeys['Fn'] || pressedKeys['Function']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   fn
                 </div>
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
+                  className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['ControlLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   <span>control</span>
@@ -371,7 +397,7 @@ export function KeyboardInspector() {
                   className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
                     pressedKeys['AltLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   <span>option</span>
@@ -379,10 +405,10 @@ export function KeyboardInspector() {
                 </div>
                 <div
                   style={{ width: 'calc(1.227 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
+                  className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['MetaLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   <span>command</span>
@@ -390,18 +416,18 @@ export function KeyboardInspector() {
                 </div>
                 <div
                   style={{ flexGrow: 1, minWidth: 'calc(3.4 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
+                  className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
                     pressedKeys['Space']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
                   }`}
                 />
                 <div
                   style={{ width: 'calc(1.227 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
+                  className={`flex-shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['MetaRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                      : 'bg-zinc-950 text-zinc-400 hover:border-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   <span>command</span>
@@ -409,10 +435,10 @@ export function KeyboardInspector() {
                 </div>
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
+                  className={`flex-shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['AltRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                      : 'bg-zinc-950 text-zinc-400 hover:border-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   <span>option</span>
@@ -422,10 +448,10 @@ export function KeyboardInspector() {
                 {/* Arrow Left */}
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
+                  className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
                     pressedKeys['ArrowLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   ◀
@@ -441,7 +467,7 @@ export function KeyboardInspector() {
                     className={`flex items-center justify-center border text-[8px] font-medium transition-all select-none rounded-t ${
                       pressedKeys['ArrowUp']
                         ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                        : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                        : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
                     }`}
                   >
                     ▲
@@ -451,7 +477,7 @@ export function KeyboardInspector() {
                     className={`flex items-center justify-center border text-[8px] font-medium transition-all select-none rounded-b ${
                       pressedKeys['ArrowDown']
                         ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                        : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                        : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
                     }`}
                   >
                     ▼
@@ -464,7 +490,7 @@ export function KeyboardInspector() {
                   className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
                     pressedKeys['ArrowRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   ▶
