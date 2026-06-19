@@ -271,7 +271,7 @@ export function KeyboardInspector() {
           height: heightStyle,
           flexGrow: isFlexGrow ? 1 : 0,
         }}
-        className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
+        className={`shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
           isActive
             ? 'bg-zinc-100 text-zinc-950 border-zinc-100 shadow-[0_0_12px_rgba(244,244,245,0.4)] font-semibold scale-[0.98]'
             : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
@@ -373,7 +373,7 @@ export function KeyboardInspector() {
               <div className="flex gap-1 justify-between w-full">
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex items-center justify-center border text-[9px] font-medium select-none rounded p-1 whitespace-pre-line text-left ${
+                  className={`shrink-0 flex items-center justify-center border text-[9px] font-medium select-none rounded p-1 whitespace-pre-line text-left ${
                     pressedKeys['Fn'] || pressedKeys['Function']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
                       : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
@@ -383,7 +383,7 @@ export function KeyboardInspector() {
                 </div>
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
+                  className={`shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['ControlLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
                       : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
@@ -394,7 +394,7 @@ export function KeyboardInspector() {
                 </div>
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
+                  className={`shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
                     pressedKeys['AltLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
                       : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
@@ -405,7 +405,7 @@ export function KeyboardInspector() {
                 </div>
                 <div
                   style={{ width: 'calc(1.227 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
+                  className={`shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['MetaLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
                       : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
@@ -416,7 +416,7 @@ export function KeyboardInspector() {
                 </div>
                 <div
                   style={{ flexGrow: 1, minWidth: 'calc(3.4 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
+                  className={`shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
                     pressedKeys['Space']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
                       : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
@@ -424,7 +424,7 @@ export function KeyboardInspector() {
                 />
                 <div
                   style={{ width: 'calc(1.227 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
+                  className={`shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['MetaRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
                       : 'bg-zinc-950 text-zinc-400 hover:border-zinc-700 transition-colors duration-200'
@@ -435,7 +435,7 @@ export function KeyboardInspector() {
                 </div>
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
+                  className={`shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['AltRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
                       : 'bg-zinc-950 text-zinc-400 hover:border-zinc-700 transition-colors duration-200'
@@ -448,7 +448,7 @@ export function KeyboardInspector() {
                 {/* Arrow Left */}
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
+                  className={`shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
                     pressedKeys['ArrowLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
                       : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
@@ -460,7 +460,7 @@ export function KeyboardInspector() {
                 {/* Arrow Up / Down Stack */}
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className="flex-shrink-0 flex flex-col justify-between"
+                  className="shrink-0 flex flex-col justify-between"
                 >
                   <div
                     style={{ height: 'calc(0.454 * var(--key-unit, 44px))' }}
@@ -487,7 +487,7 @@ export function KeyboardInspector() {
                 {/* Arrow Right */}
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
+                  className={`shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
                     pressedKeys['ArrowRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
                       : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
@@ -517,7 +517,7 @@ export function KeyboardInspector() {
                 <div className="space-y-6">
                   {/* Big Key Display */}
                   <div className="flex items-center gap-6 p-4 bg-zinc-900/30 border border-zinc-900 rounded-lg">
-                    <div className="flex flex-col items-center justify-center bg-zinc-900 border border-zinc-800 px-6 py-4 rounded-md shadow min-w-[90px]">
+                    <div className="flex flex-col items-center justify-center bg-zinc-900 border border-zinc-800 px-6 py-4 rounded-md shadow min-w-22.5">
                       <span className="text-[10px] text-zinc-500 font-mono mb-1">
                         event.key
                       </span>
