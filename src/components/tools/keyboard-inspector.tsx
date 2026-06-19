@@ -274,7 +274,7 @@ export function KeyboardInspector() {
         className={`shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
           isActive
             ? 'bg-zinc-100 text-zinc-950 border-zinc-100 shadow-[0_0_12px_rgba(244,244,245,0.4)] font-semibold scale-[0.98]'
-            : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
+            : 'bg-zinc-900/60 text-zinc-300 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-900 transition-colors duration-200'
         } ${key.labelClass || 'whitespace-pre-line text-center p-1'}`}
       >
         {key.label}
@@ -288,7 +288,7 @@ export function KeyboardInspector() {
       <Card className="border-zinc-800 bg-zinc-950 overflow-hidden">
         <CardContent className="p-6 space-y-6">
           {/* Controls Bar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-900 pb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
             <div className="flex items-center space-x-2">
               <span
                 className={`relative flex h-2 w-2 ${isListening ? 'block' : 'hidden'}`}
@@ -296,7 +296,7 @@ export function KeyboardInspector() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <p className="text-[13px] text-zinc-400 font-medium">
+              <p className="text-[13px] text-zinc-300 font-medium">
                 {isListening
                   ? 'Ready. Press any key to inspect globally.'
                   : 'Listener paused. Click Resume to inspect.'}
@@ -304,7 +304,7 @@ export function KeyboardInspector() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center space-x-2 text-[12px] text-zinc-400 cursor-pointer select-none">
+              <label className="flex items-center space-x-2 text-[12px] text-zinc-300 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={preventDefault}
@@ -336,13 +336,13 @@ export function KeyboardInspector() {
           </div>
 
           {/* Interactive Keyboard */}
-          <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+          <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-850 scrollbar-track-transparent">
             <div
               style={{
                 width: 'calc(14.954 * var(--key-unit, 44px) + 13 * 4px + 26px)',
                 '--key-unit': 'clamp(42px, 5.5vw, 68px)',
               } as React.CSSProperties}
-              className="mx-auto space-y-1.5 p-3 bg-zinc-900/40 rounded-lg border border-zinc-900"
+              className="mx-auto space-y-1.5 p-3 bg-zinc-950 rounded-lg border border-zinc-800"
             >
               {/* Row 1 */}
               <div className="flex gap-1 justify-between w-full">
@@ -376,7 +376,7 @@ export function KeyboardInspector() {
                   className={`shrink-0 flex items-center justify-center border text-[9px] font-medium select-none rounded p-1 whitespace-pre-line text-left ${
                     pressedKeys['Fn'] || pressedKeys['Function']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
+                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   fn
@@ -386,40 +386,40 @@ export function KeyboardInspector() {
                   className={`shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['ControlLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
+                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   <span>control</span>
-                  <span className="self-end text-[8px] opacity-60">^</span>
+                  <span className="self-end text-[8px] opacity-70">^</span>
                 </div>
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
                     pressedKeys['AltLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
+                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   <span>option</span>
-                  <span className="self-end text-[8px] opacity-60">⌥</span>
+                  <span className="self-end text-[8px] opacity-70">⌥</span>
                 </div>
                 <div
                   style={{ width: 'calc(1.227 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
                   className={`shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['MetaLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
+                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   <span>command</span>
-                  <span className="self-end text-[8px] opacity-60">⌘</span>
+                  <span className="self-end text-[8px] opacity-70">⌘</span>
                 </div>
                 <div
                   style={{ flexGrow: 1, minWidth: 'calc(3.4 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
-                  className={`shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
+                  className={`shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
                     pressedKeys['Space']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
+                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                   }`}
                 />
                 <div
@@ -427,31 +427,31 @@ export function KeyboardInspector() {
                   className={`shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['MetaRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 hover:border-zinc-700 transition-colors duration-200'
+                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   <span>command</span>
-                  <span className="self-start text-[8px] opacity-60">⌘</span>
+                  <span className="self-start text-[8px] opacity-70">⌘</span>
                 </div>
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['AltRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 hover:border-zinc-700 transition-colors duration-200'
+                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   <span>option</span>
-                  <span className="self-start text-[8px] opacity-60">⌥</span>
+                  <span className="self-start text-[8px] opacity-70">⌥</span>
                 </div>
 
                 {/* Arrow Left */}
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
+                  className={`shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
                     pressedKeys['ArrowLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
+                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   ◀
@@ -467,7 +467,7 @@ export function KeyboardInspector() {
                     className={`flex items-center justify-center border text-[8px] font-medium transition-all select-none rounded-t ${
                       pressedKeys['ArrowUp']
                         ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                        : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
+                        : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                     }`}
                   >
                     ▲
@@ -477,7 +477,7 @@ export function KeyboardInspector() {
                     className={`flex items-center justify-center border text-[8px] font-medium transition-all select-none rounded-b ${
                       pressedKeys['ArrowDown']
                         ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                        : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
+                        : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                     }`}
                   >
                     ▼
@@ -490,7 +490,7 @@ export function KeyboardInspector() {
                   className={`shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
                     pressedKeys['ArrowRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-700 transition-colors duration-200'
+                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
                   }`}
                 >
                   ▶
@@ -516,9 +516,9 @@ export function KeyboardInspector() {
               {lastEvent ? (
                 <div className="space-y-6">
                   {/* Big Key Display */}
-                  <div className="flex items-center gap-6 p-4 bg-zinc-900/30 border border-zinc-900 rounded-lg">
-                    <div className="flex flex-col items-center justify-center bg-zinc-900 border border-zinc-800 px-6 py-4 rounded-md shadow min-w-22.5">
-                      <span className="text-[10px] text-zinc-500 font-mono mb-1">
+                  <div className="flex items-center gap-6 p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+                    <div className="flex flex-col items-center justify-center bg-zinc-950 border border-zinc-800 px-6 py-4 rounded-md shadow min-w-22.5">
+                      <span className="text-[10px] text-zinc-400 font-mono mb-1">
                         event.key
                       </span>
                       <span className="text-xl font-bold text-zinc-100 tracking-wide font-mono text-center">
@@ -528,20 +528,20 @@ export function KeyboardInspector() {
 
                     <div className="flex-1 space-y-2">
                       <div className="flex justify-between text-xs">
-                        <span className="text-zinc-500">event.code</span>
-                        <span className="font-mono text-zinc-300 font-semibold">
+                        <span className="text-zinc-400">event.code</span>
+                        <span className="font-mono text-zinc-200 font-semibold">
                           {lastEvent.code}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-zinc-500">event.which</span>
-                        <span className="font-mono text-zinc-300 font-semibold">
+                        <span className="text-zinc-400">event.which</span>
+                        <span className="font-mono text-zinc-200 font-semibold">
                           {lastEvent.which}
                         </span>
                       </div>
                       <div className="flex justify-between text-xs">
-                        <span className="text-zinc-500">event.keyCode</span>
-                        <span className="font-mono text-zinc-300 font-semibold">
+                        <span className="text-zinc-400">event.keyCode</span>
+                        <span className="font-mono text-zinc-200 font-semibold">
                           {lastEvent.keyCode}
                         </span>
                       </div>
@@ -550,18 +550,18 @@ export function KeyboardInspector() {
 
                   {/* Properties Table */}
                   <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div className="space-y-2.5 p-3.5 bg-zinc-900/20 border border-zinc-900 rounded">
+                    <div className="space-y-2.5 p-3.5 bg-zinc-900/40 border border-zinc-800 rounded">
                       <div className="flex justify-between">
-                        <span className="text-zinc-500">Location</span>
-                        <span className="font-semibold text-zinc-300">
+                        <span className="text-zinc-400">Location</span>
+                        <span className="font-semibold text-zinc-200">
                           {getLocationString(lastEvent.location)}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-zinc-500">Is Repeat?</span>
+                        <span className="text-zinc-400">Is Repeat?</span>
                         <span
                           className={`font-semibold ${
-                            lastEvent.repeat ? 'text-amber-400' : 'text-zinc-400'
+                            lastEvent.repeat ? 'text-amber-400' : 'text-zinc-300'
                           }`}
                         >
                           {lastEvent.repeat ? 'True' : 'False'}
@@ -569,16 +569,16 @@ export function KeyboardInspector() {
                       </div>
                     </div>
 
-                    <div className="space-y-2.5 p-3.5 bg-zinc-900/20 border border-zinc-900 rounded">
+                    <div className="space-y-2.5 p-3.5 bg-zinc-900/40 border border-zinc-800 rounded">
                       <div className="flex justify-between">
-                        <span className="text-zinc-500">Is Composing?</span>
-                        <span className="font-semibold text-zinc-400">
+                        <span className="text-zinc-400">Is Composing?</span>
+                        <span className="font-semibold text-zinc-300">
                           {lastEvent.isComposing ? 'True' : 'False'}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-zinc-500">Timestamp</span>
-                        <span className="font-mono text-zinc-400">
+                        <span className="text-zinc-400">Timestamp</span>
+                        <span className="font-mono text-zinc-300">
                           {formatTime(lastEvent.timestamp)}
                         </span>
                       </div>
@@ -587,7 +587,7 @@ export function KeyboardInspector() {
 
                   {/* Modifiers Grid */}
                   <div className="space-y-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 block">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 block">
                       Active Modifiers
                     </span>
                     <div className="grid grid-cols-4 gap-2">
@@ -602,7 +602,7 @@ export function KeyboardInspector() {
                           className={`flex flex-col items-center py-2.5 border rounded transition-colors ${
                             mod.active
                               ? 'bg-zinc-100 border-zinc-100 text-zinc-950 font-bold'
-                              : 'bg-zinc-900/10 border-zinc-900 text-zinc-600'
+                              : 'bg-zinc-900/30 border-zinc-800 text-zinc-500'
                           }`}
                         >
                           <span className="text-xs mb-0.5">{mod.label}</span>
@@ -613,8 +613,8 @@ export function KeyboardInspector() {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-16 border border-dashed border-zinc-900 rounded-lg">
-                  <p className="text-zinc-500 text-sm">
+                <div className="text-center py-16 border border-dashed border-zinc-800 rounded-lg">
+                  <p className="text-zinc-450 text-sm">
                     No keys pressed yet. Press any key.
                   </p>
                 </div>
@@ -661,7 +661,7 @@ export function KeyboardInspector() {
         {/* Right Side: Keystroke Log */}
         <Card className="border-zinc-800 bg-zinc-950 h-full">
           <CardContent className="p-6 space-y-6">
-            <div className="flex justify-between items-center border-b border-zinc-900 pb-4">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
               <h3 className="text-sm font-semibold text-zinc-200">
                 Live Keystroke Log (Last 15)
               </h3>
@@ -673,7 +673,7 @@ export function KeyboardInspector() {
                     setHistory([]);
                     setLastEvent(null);
                   }}
-                  className="border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-red-400 hover:border-red-950 h-8 text-xs"
+                  className="border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-red-400 hover:border-red-950 h-8 text-xs"
                 >
                   <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Clear Log
                 </Button>
@@ -684,7 +684,7 @@ export function KeyboardInspector() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
-                    <tr className="text-zinc-500 border-b border-zinc-900">
+                    <tr className="text-zinc-400 border-b border-zinc-800">
                       <th className="py-2.5 font-medium">Time</th>
                       <th className="py-2.5 font-medium">Key</th>
                       <th className="py-2.5 font-medium">Code</th>
@@ -706,29 +706,29 @@ export function KeyboardInspector() {
                       return (
                         <tr
                           key={ev.timestamp + index}
-                          className="border-b border-zinc-900/60 hover:bg-zinc-900/10 text-zinc-300 font-mono transition-colors"
+                          className="border-b border-zinc-800/60 hover:bg-zinc-900/30 text-zinc-200 font-mono transition-colors"
                         >
-                          <td className="py-3 text-[11px] text-zinc-500">
+                          <td className="py-3 text-[11px] text-zinc-450">
                             {formatTime(ev.timestamp)}
                           </td>
                           <td className="py-3 font-semibold font-sans">
-                            <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800">
+                            <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-750 text-zinc-100">
                               {ev.key === ' ' ? 'Space' : ev.key}
                             </span>
                           </td>
-                          <td className="py-3 text-zinc-400 text-[11px]">
+                          <td className="py-3 text-zinc-300 text-[11px]">
                             {ev.code}
                           </td>
-                          <td className="py-3 text-center text-zinc-400">
+                          <td className="py-3 text-center text-zinc-300">
                             {ev.which}
                           </td>
-                          <td className="py-3 text-right font-sans font-semibold text-zinc-400">
+                          <td className="py-3 text-right font-sans font-semibold text-zinc-300">
                             {modifiersStr ? (
-                              <span className="text-[10px] bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded tracking-wider">
+                              <span className="text-[10px] bg-zinc-900 border border-zinc-750 px-1.5 py-0.5 rounded tracking-wider text-zinc-300">
                                 {modifiersStr}
                               </span>
                             ) : (
-                              <span className="text-zinc-600 font-normal">-</span>
+                              <span className="text-zinc-500 font-normal">-</span>
                             )}
                           </td>
                         </tr>
@@ -738,8 +738,8 @@ export function KeyboardInspector() {
                 </table>
               </div>
             ) : (
-              <div className="text-center py-24 border border-dashed border-zinc-900 rounded-lg">
-                <p className="text-zinc-500 text-sm">
+              <div className="text-center py-24 border border-dashed border-zinc-800 rounded-lg">
+                <p className="text-zinc-450 text-sm">
                   Keystroke log is empty. Press keys to populate.
                 </p>
               </div>
