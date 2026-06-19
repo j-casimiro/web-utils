@@ -313,7 +313,7 @@ export function KeyboardInspector() {
           <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
             <div
               style={{
-                width: 'calc(14.954 * var(--key-unit, 44px) + 13 * 4px)',
+                width: 'calc(14.954 * var(--key-unit, 44px) + 13 * 4px + 26px)',
                 '--key-unit': 'clamp(42px, 5.5vw, 68px)',
               } as React.CSSProperties}
               className="mx-auto space-y-1.5 p-3 bg-zinc-900/40 rounded-lg border border-zinc-900"
