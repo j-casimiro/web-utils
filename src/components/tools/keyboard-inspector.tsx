@@ -220,16 +220,29 @@ export function KeyboardInspector() {
 
   const renderKey = (key: KeyItem) => {
     const isActive = pressedKeys[key.code];
-    const keyWidth = typeof key.width === 'number' ? `${key.width}px` : undefined;
-    const keyHeight = key.height ? `${key.height}px` : '44px';
+    let widthStyle: string | undefined;
+    let heightStyle: string | undefined;
+
+    if (typeof key.width === 'number') {
+      const ratio = key.width / 44;
+      widthStyle = `calc(${ratio} * var(--key-unit, 44px))`;
+    }
+
+    if (key.height) {
+      const ratio = key.height / 44;
+      heightStyle = `calc(${ratio} * var(--key-unit, 44px))`;
+    } else {
+      heightStyle = `var(--key-unit, 44px)`;
+    }
+
     const isFlexGrow = key.width === 'flex-grow';
 
     return (
       <div
         key={key.code}
         style={{
-          width: keyWidth,
-          height: keyHeight,
+          width: widthStyle,
+          height: heightStyle,
           flexGrow: isFlexGrow ? 1 : 0,
         }}
         className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
@@ -298,7 +311,13 @@ export function KeyboardInspector() {
 
           {/* Interactive Keyboard */}
           <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
-            <div className="w-[670px] mx-auto space-y-1.5 p-2 bg-zinc-900/40 rounded-lg border border-zinc-900">
+            <div
+              style={{
+                width: 'calc(14.954 * var(--key-unit, 44px) + 13 * 4px)',
+                '--key-unit': 'clamp(42px, 5.5vw, 68px)',
+              } as React.CSSProperties}
+              className="mx-auto space-y-1.5 p-3 bg-zinc-900/40 rounded-lg border border-zinc-900"
+            >
               {/* Row 1 */}
               <div className="flex gap-1 justify-between w-full">
                 {ROW_1.map(renderKey)}
@@ -327,7 +346,7 @@ export function KeyboardInspector() {
               {/* Row 6 */}
               <div className="flex gap-1 justify-between w-full">
                 <div
-                  style={{ width: '44px', height: '44px' }}
+                  style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`flex-shrink-0 flex items-center justify-center border text-[9px] font-medium transition-all select-none rounded p-1 whitespace-pre-line text-left ${
                     pressedKeys['Fn'] || pressedKeys['Function']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
@@ -337,7 +356,7 @@ export function KeyboardInspector() {
                   fn
                 </div>
                 <div
-                  style={{ width: '44px', height: '44px' }}
+                  style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
                     pressedKeys['ControlLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
@@ -348,7 +367,7 @@ export function KeyboardInspector() {
                   <span className="self-end text-[8px] opacity-60">^</span>
                 </div>
                 <div
-                  style={{ width: '44px', height: '44px' }}
+                  style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
                     pressedKeys['AltLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
@@ -359,7 +378,7 @@ export function KeyboardInspector() {
                   <span className="self-end text-[8px] opacity-60">⌥</span>
                 </div>
                 <div
-                  style={{ width: '54px', height: '44px' }}
+                  style={{ width: 'calc(1.227 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
                   className={`flex-shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
                     pressedKeys['MetaLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
@@ -370,7 +389,7 @@ export function KeyboardInspector() {
                   <span className="self-end text-[8px] opacity-60">⌘</span>
                 </div>
                 <div
-                  style={{ flexGrow: 1, minWidth: '150px', height: '44px' }}
+                  style={{ flexGrow: 1, minWidth: 'calc(3.4 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
                   className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
                     pressedKeys['Space']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
@@ -378,7 +397,7 @@ export function KeyboardInspector() {
                   }`}
                 />
                 <div
-                  style={{ width: '54px', height: '44px' }}
+                  style={{ width: 'calc(1.227 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
                   className={`flex-shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
                     pressedKeys['MetaRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
@@ -389,7 +408,7 @@ export function KeyboardInspector() {
                   <span className="self-start text-[8px] opacity-60">⌘</span>
                 </div>
                 <div
-                  style={{ width: '44px', height: '44px' }}
+                  style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`flex-shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
                     pressedKeys['AltRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
@@ -402,7 +421,7 @@ export function KeyboardInspector() {
 
                 {/* Arrow Left */}
                 <div
-                  style={{ width: '44px', height: '44px' }}
+                  style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
                     pressedKeys['ArrowLeft']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
@@ -414,11 +433,11 @@ export function KeyboardInspector() {
 
                 {/* Arrow Up / Down Stack */}
                 <div
-                  style={{ width: '44px', height: '44px' }}
+                  style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className="flex-shrink-0 flex flex-col justify-between"
                 >
                   <div
-                    style={{ height: '20px' }}
+                    style={{ height: 'calc(0.454 * var(--key-unit, 44px))' }}
                     className={`flex items-center justify-center border text-[8px] font-medium transition-all select-none rounded-t ${
                       pressedKeys['ArrowUp']
                         ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
@@ -428,7 +447,7 @@ export function KeyboardInspector() {
                     ▲
                   </div>
                   <div
-                    style={{ height: '20px' }}
+                    style={{ height: 'calc(0.454 * var(--key-unit, 44px))' }}
                     className={`flex items-center justify-center border text-[8px] font-medium transition-all select-none rounded-b ${
                       pressedKeys['ArrowDown']
                         ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
@@ -441,7 +460,7 @@ export function KeyboardInspector() {
 
                 {/* Arrow Right */}
                 <div
-                  style={{ width: '44px', height: '44px' }}
+                  style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`flex-shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
                     pressedKeys['ArrowRight']
                       ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
