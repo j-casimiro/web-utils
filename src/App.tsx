@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Sun, Moon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Card,
@@ -115,6 +115,31 @@ const TOOLS: ToolItem[] = [
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'light' || saved === 'dark') {
+        return saved;
+      }
+    }
+    return 'dark';
+  });
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'light') {
+      root.classList.add('light');
+      root.classList.remove('dark');
+    } else {
+      root.classList.add('dark');
+      root.classList.remove('light');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
 
   // Filter tools based on search query
   const filteredTools = TOOLS.filter(
@@ -127,7 +152,7 @@ export default function App() {
   const ActiveToolComponent = activeTool?.component;
 
   return (
-    <div className="min-h-screen bg-black text-zinc-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       {/* Main Content */}
       <main className={`flex-1 w-full mx-auto px-4 py-16 transition-all duration-300 ${
         activeToolId === 'keyboard-inspector' ? 'max-w-none md:px-8 lg:px-12' : 'max-w-5xl'
@@ -137,17 +162,36 @@ export default function App() {
             title={activeTool.title}
             description={activeTool.description}
             onBack={() => setActiveToolId(null)}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
           >
             <ActiveToolComponent />
           </ToolWrapper>
         ) : (
           <div className="space-y-10">
+            {/* Top Bar for Home Page Actions */}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleToggleTheme}
+                className="border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground h-9 w-9"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+            </div>
+
             {/* Minimal Hero / Intro */}
             <div className="space-y-4 max-w-xl mx-auto text-center flex flex-col items-center">
-              <h1 className="text-[36px] font-semibold tracking-tight text-zinc-100">
+              <h1 className="text-[36px] font-semibold tracking-tight text-foreground">
                 Web Utilities
               </h1>
-              <p className="text-zinc-400 text-[13px] leading-normal max-w-md">
+              <p className="text-muted-foreground text-[13px] leading-normal max-w-md">
                 A minimal, offline-first collection of utilities for daily
                 developer needs. All conversions and generations run entirely in
                 your browser.
@@ -156,12 +200,12 @@ export default function App() {
 
             {/* Search Section */}
             <div className="relative max-w-md w-full mx-auto">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search tools (e.g. password, qr, unit)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 border-zinc-800 bg-zinc-950 text-zinc-100 placeholder-zinc-500 focus-visible:ring-zinc-850 focus-visible:border-zinc-800"
+                className="pl-10 border-border bg-card text-foreground placeholder-muted-foreground focus-visible:ring-ring focus-visible:border-border"
               />
             </div>
 
@@ -174,18 +218,19 @@ export default function App() {
                     className="border border-border bg-card text-card-foreground hover:bg-card-hover hover:border-active transition-all group duration-200 flex flex-col justify-between"
                   >
                     <CardHeader className="space-y-2">
-                      <CardTitle className="text-[15px] font-bold group-hover:text-white transition-colors">
+                      <CardTitle className="text-[15px] font-bold group-hover:text-primary transition-colors">
                         {tool.title}
                       </CardTitle>
-                      <CardDescription className="text-zinc-400 text-[13px] leading-normal">
+                      <CardDescription className="text-muted-foreground text-[13px] leading-normal">
                         {tool.description}
                       </CardDescription>
                     </CardHeader>
                     <CardContent></CardContent>
                     <CardFooter className="pt-4 border-t border-border mt-auto px-4 pb-4">
                       <Button
+                        variant="outline"
                         onClick={() => setActiveToolId(tool.id)}
-                        className="w-full border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 border text-xs"
+                        className="w-full border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground text-xs"
                       >
                         Open Tool
                       </Button>
@@ -195,7 +240,7 @@ export default function App() {
               </div>
             ) : (
               <div className="text-center py-12 border border-dashed border-zinc-900 rounded-lg">
-                <p className="text-zinc-500 text-sm">
+                <p className="text-muted-foreground text-sm">
                   No tools found matching your search.
                 </p>
               </div>
@@ -205,13 +250,13 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-black py-8 mt-12 text-center text-[12px] text-zinc-500 font-mono flex flex-col items-center justify-center gap-3">
+      <footer className="border-t border-border bg-background py-8 mt-12 text-center text-[12px] text-zinc-500 font-mono flex flex-col items-center justify-center gap-3">
         <p>built by j-casimiro</p>
         <a
           href="https://github.com/j-casimiro/web-utils"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-zinc-800 bg-zinc-950 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-950 hover:border-zinc-700 transition-all text-[11px] font-sans"
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-all text-[11px] font-sans"
         >
           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>

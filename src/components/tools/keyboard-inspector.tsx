@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { Copy, Check, Trash2, Keyboard, Play, Pause } from 'lucide-react';
+import { Copy, Check, Trash2, Keyboard, Play, Pause, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 
 interface KeyItem {
   code: string;
-  label: string;
+  label: string | React.ReactNode;
   width: number | string; // px or 'flex-grow'
   height?: number; // px
   labelClass?: string;
@@ -28,20 +27,20 @@ interface ParsedEvent {
 
 // Exactly 658px total width per row to align perfectly
 const ROW_1: KeyItem[] = [
-  { code: 'Escape', label: 'esc', width: 65, height: 24, labelClass: 'text-[9px]' },
-  { code: 'F1', label: 'F1', width: 44, height: 24 },
-  { code: 'F2', label: 'F2', width: 44, height: 24 },
-  { code: 'F3', label: 'F3', width: 44, height: 24 },
-  { code: 'F4', label: 'F4', width: 44, height: 24 },
-  { code: 'F5', label: 'F5', width: 44, height: 24 },
-  { code: 'F6', label: 'F6', width: 44, height: 24 },
-  { code: 'F7', label: 'F7', width: 44, height: 24 },
-  { code: 'F8', label: 'F8', width: 44, height: 24 },
-  { code: 'F9', label: 'F9', width: 44, height: 24 },
-  { code: 'F10', label: 'F10', width: 44, height: 24 },
-  { code: 'F11', label: 'F11', width: 44, height: 24 },
-  { code: 'F12', label: 'F12', width: 44, height: 24 },
-  { code: 'F13', label: '🔒', width: 65, height: 24, labelClass: 'text-[9px]' },
+  { code: 'Escape', label: 'esc', width: 65, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F1', label: 'F1', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F2', label: 'F2', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F3', label: 'F3', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F4', label: 'F4', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F5', label: 'F5', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F6', label: 'F6', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F7', label: 'F7', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F8', label: 'F8', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F9', label: 'F9', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F10', label: 'F10', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F11', label: 'F11', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F12', label: 'F12', width: 44, height: 18, labelClass: 'text-[8px]' },
+  { code: 'F13', label: <Lock className="h-2.5 w-2.5" />, width: 65, height: 18 },
 ];
 
 const ROW_2: KeyItem[] = [
@@ -273,8 +272,8 @@ export function KeyboardInspector() {
         }}
         className={`shrink-0 flex items-center justify-center border text-[11px] font-medium select-none rounded ${
           isActive
-            ? 'bg-zinc-100 text-zinc-950 border-zinc-100 shadow-[0_0_12px_rgba(244,244,245,0.4)] font-semibold scale-[0.98]'
-            : 'bg-zinc-900/60 text-zinc-300 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-900 transition-colors duration-200'
+            ? 'keyboard-key-active font-semibold scale-[0.98]'
+            : 'keyboard-key transition-colors duration-200'
         } ${key.labelClass || 'whitespace-pre-line text-center p-1'}`}
       >
         {key.label}
@@ -283,12 +282,14 @@ export function KeyboardInspector() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Keyboard Container Card */}
-      <Card className="border-zinc-800 bg-zinc-950 overflow-hidden">
-        <CardContent className="p-6 space-y-6">
-          {/* Controls Bar */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+    <div className="space-y-4">
+      {/* 1. KeyboardEvent Properties Dashboard */}
+      <div className="border border-border bg-muted/20 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+            <h3 className="text-sm font-semibold text-foreground flex items-center">
+              <Keyboard className="h-4 w-4 mr-2 text-muted-foreground" />
+              KeyboardEvent Properties
+            </h3>
             <div className="flex items-center space-x-2">
               <span
                 className={`relative flex h-2 w-2 ${isListening ? 'block' : 'hidden'}`}
@@ -296,31 +297,142 @@ export function KeyboardInspector() {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
-              <p className="text-[13px] text-zinc-300 font-medium">
+              <p className="text-[12px] text-muted-foreground">
+                {isListening ? 'Active' : 'Paused'}
+              </p>
+            </div>
+          </div>
+
+          {lastEvent ? (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-stretch">
+              {/* Large Key Display */}
+              <div className="flex flex-col items-center justify-center bg-muted border border-border p-4 rounded-lg shadow-sm min-h-24">
+                <span className="text-[10px] text-muted-foreground font-mono mb-1">
+                  event.key
+                </span>
+                <span className="text-2xl font-bold text-foreground tracking-wide font-mono text-center truncate max-w-full">
+                  {lastEvent.key === ' ' ? 'Space' : lastEvent.key}
+                </span>
+              </div>
+
+              {/* Core metrics */}
+              <div className="bg-muted/40 border border-border p-4 rounded-lg flex flex-col justify-center space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">event.code</span>
+                  <span className="font-mono text-foreground font-semibold">
+                    {lastEvent.code}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">event.which</span>
+                  <span className="font-mono text-foreground font-semibold">
+                    {lastEvent.which}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">event.keyCode</span>
+                  <span className="font-mono text-foreground font-semibold">
+                    {lastEvent.keyCode}
+                  </span>
+                </div>
+              </div>
+
+              {/* Status Flags */}
+              <div className="bg-muted/40 border border-border p-4 rounded-lg flex flex-col justify-center space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Location</span>
+                  <span className="font-semibold text-foreground">
+                    {getLocationString(lastEvent.location)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Is Repeat?</span>
+                  <span
+                    className={`font-semibold ${
+                      lastEvent.repeat ? 'text-amber-500' : 'text-foreground'
+                    }`}
+                  >
+                    {lastEvent.repeat ? 'True' : 'False'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Is Composing?</span>
+                  <span className="font-semibold text-foreground">
+                    {lastEvent.isComposing ? 'True' : 'False'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Modifiers List */}
+              <div className="bg-muted/40 border border-border p-4 rounded-lg flex flex-col justify-center space-y-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                  Active Modifiers
+                </span>
+                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                  {[
+                    { label: 'Shift (⇧)', active: lastEvent.shiftKey },
+                    { label: 'Control (^)', active: lastEvent.ctrlKey },
+                    { label: 'Option (⌥)', active: lastEvent.altKey },
+                    { label: 'Command (⌘)', active: lastEvent.metaKey },
+                  ].map((mod) => (
+                    <div
+                      key={mod.label}
+                      className={`flex items-center justify-between px-2 py-1 border rounded ${
+                        mod.active
+                          ? 'bg-primary/10 border-primary/30 text-primary font-semibold'
+                          : 'bg-background/50 border-border text-muted-foreground'
+                      }`}
+                    >
+                      <span>{mod.label}</span>
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${
+                          mod.active ? 'bg-primary animate-pulse' : 'bg-transparent'
+                        }`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-10 border border-dashed border-border rounded-lg bg-muted/20">
+              <p className="text-muted-foreground text-sm">
+                No keys pressed yet. Press any key on your keyboard to inspect properties.
+              </p>
+            </div>
+          )}
+        </div>
+
+      {/* 2. Interactive Keyboard Board */}
+      <div className="border border-border bg-muted/10 rounded-lg p-4 space-y-4">
+          {/* Controls Bar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-3">
+            <div className="flex items-center space-x-2">
+              <p className="text-[13px] text-muted-foreground">
                 {isListening
-                  ? 'Ready. Press any key to inspect globally.'
+                  ? 'Ready. Press keys below to inspect their layouts.'
                   : 'Listener paused. Click Resume to inspect.'}
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <label className="flex items-center space-x-2 text-[12px] text-zinc-300 cursor-pointer select-none">
+              <label className="flex items-center space-x-2 text-[12px] text-muted-foreground cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={preventDefault}
                   onChange={(e) => setPreventDefault(e.target.checked)}
-                  className="rounded border-zinc-800 bg-zinc-900 text-zinc-100 focus:ring-0 cursor-pointer"
+                  className="rounded border-border bg-background text-primary focus:ring-0 cursor-pointer"
                 />
                 <span>Prevent default key behaviors</span>
               </label>
 
-              <div className="h-4 w-px bg-zinc-800" />
+              <div className="h-4 w-px bg-border" />
 
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsListening(!isListening)}
-                className="border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 text-xs py-1 h-8"
+                className="border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground text-xs py-1 h-8"
               >
                 {isListening ? (
                   <>
@@ -336,13 +448,13 @@ export function KeyboardInspector() {
           </div>
 
           {/* Interactive Keyboard */}
-          <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-zinc-850 scrollbar-track-transparent">
+          <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
             <div
               style={{
                 width: 'calc(14.954 * var(--key-unit, 44px) + 13 * 4px + 26px)',
                 '--key-unit': 'clamp(42px, 5.5vw, 68px)',
               } as React.CSSProperties}
-              className="mx-auto space-y-1.5 p-3 bg-zinc-950 rounded-lg border border-zinc-800"
+              className="mx-auto space-y-1 pt-1 pb-2 px-2 rounded-lg border keyboard-board"
             >
               {/* Row 1 */}
               <div className="flex gap-1 justify-between w-full">
@@ -375,8 +487,8 @@ export function KeyboardInspector() {
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`shrink-0 flex items-center justify-center border text-[9px] font-medium select-none rounded p-1 whitespace-pre-line text-left ${
                     pressedKeys['Fn'] || pressedKeys['Function']
-                      ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
+                      ? 'keyboard-key-active font-semibold scale-[0.98]'
+                      : 'keyboard-key transition-colors duration-200'
                   }`}
                 >
                   fn
@@ -385,8 +497,8 @@ export function KeyboardInspector() {
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['ControlLeft']
-                      ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
+                      ? 'keyboard-key-active font-semibold scale-[0.98]'
+                      : 'keyboard-key transition-colors duration-200'
                   }`}
                 >
                   <span>control</span>
@@ -396,8 +508,8 @@ export function KeyboardInspector() {
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium transition-all select-none rounded p-1.5 ${
                     pressedKeys['AltLeft']
-                      ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
+                      ? 'keyboard-key-active font-semibold scale-[0.98]'
+                      : 'keyboard-key transition-colors duration-200'
                   }`}
                 >
                   <span>option</span>
@@ -407,8 +519,8 @@ export function KeyboardInspector() {
                   style={{ width: 'calc(1.227 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
                   className={`shrink-0 flex flex-col items-start justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['MetaLeft']
-                      ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
+                      ? 'keyboard-key-active font-semibold scale-[0.98]'
+                      : 'keyboard-key transition-colors duration-200'
                   }`}
                 >
                   <span>command</span>
@@ -418,16 +530,16 @@ export function KeyboardInspector() {
                   style={{ flexGrow: 1, minWidth: 'calc(3.4 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
                   className={`shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
                     pressedKeys['Space']
-                      ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
+                      ? 'keyboard-key-active font-semibold scale-[0.98]'
+                      : 'keyboard-key transition-colors duration-200'
                   }`}
                 />
                 <div
                   style={{ width: 'calc(1.227 * var(--key-unit, 44px))', height: 'var(--key-unit, 44px)' }}
                   className={`shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['MetaRight']
-                      ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
+                      ? 'keyboard-key-active font-semibold scale-[0.98]'
+                      : 'keyboard-key transition-colors duration-200'
                   }`}
                 >
                   <span>command</span>
@@ -437,24 +549,29 @@ export function KeyboardInspector() {
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
                   className={`shrink-0 flex flex-col items-end justify-between border text-[9px] font-medium select-none rounded p-1.5 ${
                     pressedKeys['AltRight']
-                      ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
+                      ? 'keyboard-key-active font-semibold scale-[0.98]'
+                      : 'keyboard-key transition-colors duration-200'
                   }`}
                 >
                   <span>option</span>
                   <span className="self-start text-[8px] opacity-70">⌥</span>
                 </div>
 
-                {/* Arrow Left */}
+                {/* Arrow Left Column */}
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
-                    pressedKeys['ArrowLeft']
-                      ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
-                  }`}
+                  className="shrink-0 flex flex-col justify-end"
                 >
-                  ◀
+                  <div
+                    style={{ height: 'calc(0.454 * var(--key-unit, 44px))' }}
+                    className={`flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
+                      pressedKeys['ArrowLeft']
+                        ? 'keyboard-key-active font-semibold scale-[0.98]'
+                        : 'keyboard-key transition-colors duration-200'
+                    }`}
+                  >
+                    ◀
+                  </div>
                 </div>
 
                 {/* Arrow Up / Down Stack */}
@@ -466,8 +583,8 @@ export function KeyboardInspector() {
                     style={{ height: 'calc(0.454 * var(--key-unit, 44px))' }}
                     className={`flex items-center justify-center border text-[8px] font-medium transition-all select-none rounded-t ${
                       pressedKeys['ArrowUp']
-                        ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                        : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
+                        ? 'keyboard-key-active font-semibold scale-[0.98]'
+                        : 'keyboard-key transition-colors duration-200'
                     }`}
                   >
                     ▲
@@ -476,193 +593,85 @@ export function KeyboardInspector() {
                     style={{ height: 'calc(0.454 * var(--key-unit, 44px))' }}
                     className={`flex items-center justify-center border text-[8px] font-medium transition-all select-none rounded-b ${
                       pressedKeys['ArrowDown']
-                        ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                        : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
+                        ? 'keyboard-key-active font-semibold scale-[0.98]'
+                        : 'keyboard-key transition-colors duration-200'
                     }`}
                   >
                     ▼
                   </div>
                 </div>
 
-                {/* Arrow Right */}
+                {/* Arrow Right Column */}
                 <div
                   style={{ width: 'var(--key-unit, 44px)', height: 'var(--key-unit, 44px)' }}
-                  className={`shrink-0 flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
-                    pressedKeys['ArrowRight']
-                      ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-semibold scale-[0.98]'
-                      : 'bg-zinc-800 text-zinc-200 border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700 transition-colors duration-200'
-                  }`}
+                  className="shrink-0 flex flex-col justify-end"
                 >
-                  ▶
+                  <div
+                    style={{ height: 'calc(0.454 * var(--key-unit, 44px))' }}
+                    className={`flex items-center justify-center border text-[11px] font-medium transition-all select-none rounded ${
+                      pressedKeys['ArrowRight']
+                        ? 'keyboard-key-active font-semibold scale-[0.98]'
+                        : 'keyboard-key transition-colors duration-200'
+                    }`}
+                  >
+                    ▶
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Details and Logs Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        {/* Left Side: Parameters & JSON */}
-        <div className="space-y-8">
-          {/* Key Metrics Card */}
-          <Card className="border-zinc-800 bg-zinc-950">
-            <CardContent className="p-6 space-y-6">
-              <h3 className="text-sm font-semibold text-zinc-200 flex items-center">
-                <Keyboard className="h-4 w-4 mr-2 text-zinc-400" />
-                KeyboardEvent Properties
-              </h3>
-
-              {lastEvent ? (
-                <div className="space-y-6">
-                  {/* Big Key Display */}
-                  <div className="flex items-center gap-6 p-4 bg-zinc-900/50 border border-zinc-800 rounded-lg">
-                    <div className="flex flex-col items-center justify-center bg-zinc-950 border border-zinc-800 px-6 py-4 rounded-md shadow min-w-22.5">
-                      <span className="text-[10px] text-zinc-400 font-mono mb-1">
-                        event.key
-                      </span>
-                      <span className="text-xl font-bold text-zinc-100 tracking-wide font-mono text-center">
-                        {lastEvent.key === ' ' ? 'Space' : lastEvent.key}
-                      </span>
-                    </div>
-
-                    <div className="flex-1 space-y-2">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-zinc-400">event.code</span>
-                        <span className="font-mono text-zinc-200 font-semibold">
-                          {lastEvent.code}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-zinc-400">event.which</span>
-                        <span className="font-mono text-zinc-200 font-semibold">
-                          {lastEvent.which}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-zinc-400">event.keyCode</span>
-                        <span className="font-mono text-zinc-200 font-semibold">
-                          {lastEvent.keyCode}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Properties Table */}
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div className="space-y-2.5 p-3.5 bg-zinc-900/40 border border-zinc-800 rounded">
-                      <div className="flex justify-between">
-                        <span className="text-zinc-400">Location</span>
-                        <span className="font-semibold text-zinc-200">
-                          {getLocationString(lastEvent.location)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-zinc-400">Is Repeat?</span>
-                        <span
-                          className={`font-semibold ${
-                            lastEvent.repeat ? 'text-amber-400' : 'text-zinc-300'
-                          }`}
-                        >
-                          {lastEvent.repeat ? 'True' : 'False'}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2.5 p-3.5 bg-zinc-900/40 border border-zinc-800 rounded">
-                      <div className="flex justify-between">
-                        <span className="text-zinc-400">Is Composing?</span>
-                        <span className="font-semibold text-zinc-300">
-                          {lastEvent.isComposing ? 'True' : 'False'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-zinc-400">Timestamp</span>
-                        <span className="font-mono text-zinc-300">
-                          {formatTime(lastEvent.timestamp)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Modifiers Grid */}
-                  <div className="space-y-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 block">
-                      Active Modifiers
-                    </span>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[
-                        { label: 'Shift', active: lastEvent.shiftKey, symbol: '⇧' },
-                        { label: 'Control', active: lastEvent.ctrlKey, symbol: '^' },
-                        { label: 'Option', active: lastEvent.altKey, symbol: '⌥' },
-                        { label: 'Command', active: lastEvent.metaKey, symbol: '⌘' },
-                      ].map((mod) => (
-                        <div
-                          key={mod.label}
-                          className={`flex flex-col items-center py-2.5 border rounded transition-colors ${
-                            mod.active
-                              ? 'bg-zinc-100 border-zinc-100 text-zinc-950 font-bold'
-                              : 'bg-zinc-900/30 border-zinc-800 text-zinc-500'
-                          }`}
-                        >
-                          <span className="text-xs mb-0.5">{mod.label}</span>
-                          <span className="text-sm font-mono">{mod.symbol}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-16 border border-dashed border-zinc-800 rounded-lg">
-                  <p className="text-zinc-450 text-sm">
-                    No keys pressed yet. Press any key.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* JSON Payload Code block */}
-          {lastEvent && (
-            <Card className="border-zinc-800 bg-zinc-950">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-semibold text-zinc-200">
-                    Raw JSON Event Payload
-                  </h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={copyJson}
-                    className="border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-zinc-200 h-8"
-                  >
-                    {jsonCopied ? (
-                      <>
-                        <Check className="h-3.5 w-3.5 mr-1 text-emerald-400" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-3.5 w-3.5 mr-1" />
-                        Copy JSON
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                <pre className="text-[11px] font-mono p-4 bg-zinc-950 border border-zinc-900 rounded overflow-x-auto text-zinc-300 max-h-56">
-                  {JSON.stringify(lastEvent, null, 2)}
-                </pre>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
-        {/* Right Side: Keystroke Log */}
-        <Card className="border-zinc-800 bg-zinc-950 h-full">
-          <CardContent className="p-6 space-y-6">
-            <div className="flex justify-between items-center border-b border-zinc-800 pb-4">
-              <h3 className="text-sm font-semibold text-zinc-200">
+      {/* 3. Raw JSON Event Payload & Keystroke Log */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+        {/* Raw JSON Event Payload */}
+        <div className="border border-border bg-muted/10 rounded-lg p-4 flex flex-col justify-between flex-1">
+          <div className="space-y-3 flex-1 flex flex-col">
+            <div className="flex justify-between items-center pb-2">
+              <h3 className="text-sm font-semibold text-foreground">
+                Raw JSON Event Payload
+              </h3>
+              {lastEvent && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyJson}
+                  className="border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground h-8"
+                >
+                  {jsonCopied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 mr-1 text-emerald-500" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5 mr-1" />
+                      Copy JSON
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+
+            {lastEvent ? (
+              <pre className="text-[11px] font-mono p-4 bg-muted/30 border border-border rounded overflow-x-auto text-foreground max-h-72 flex-1">
+                {JSON.stringify(lastEvent, null, 2)}
+              </pre>
+            ) : (
+              <div className="text-center py-16 border border-dashed border-border rounded-lg bg-muted/20 flex-1 flex items-center justify-center">
+                <p className="text-muted-foreground text-sm">
+                  No payload generated yet. Press any key to inspect.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Keystroke Log */}
+        <div className="border border-border bg-muted/10 rounded-lg p-4 flex flex-col justify-between flex-1">
+          <div className="space-y-3 flex-1 flex flex-col">
+            <div className="flex justify-between items-center border-b border-border pb-2">
+              <h3 className="text-sm font-semibold text-foreground">
                 Live Keystroke Log (Last 15)
               </h3>
               {history.length > 0 && (
@@ -673,7 +682,7 @@ export function KeyboardInspector() {
                     setHistory([]);
                     setLastEvent(null);
                   }}
-                  className="border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-red-400 hover:border-red-950 h-8 text-xs"
+                  className="border-border bg-background text-muted-foreground hover:text-destructive hover:border-destructive/30 h-8 text-xs"
                 >
                   <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Clear Log
                 </Button>
@@ -684,7 +693,7 @@ export function KeyboardInspector() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
-                    <tr className="text-zinc-400 border-b border-zinc-800">
+                    <tr className="text-muted-foreground border-b border-border">
                       <th className="py-2.5 font-medium">Time</th>
                       <th className="py-2.5 font-medium">Key</th>
                       <th className="py-2.5 font-medium">Code</th>
@@ -706,29 +715,29 @@ export function KeyboardInspector() {
                       return (
                         <tr
                           key={ev.timestamp + index}
-                          className="border-b border-zinc-800/60 hover:bg-zinc-900/30 text-zinc-200 font-mono transition-colors"
+                          className="border-b border-border/50 hover:bg-muted/40 text-foreground font-mono transition-colors"
                         >
-                          <td className="py-3 text-[11px] text-zinc-450">
+                          <td className="py-3 text-[11px] text-muted-foreground">
                             {formatTime(ev.timestamp)}
                           </td>
                           <td className="py-3 font-semibold font-sans">
-                            <span className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-750 text-zinc-100">
+                            <span className="px-1.5 py-0.5 rounded bg-muted border border-border text-foreground">
                               {ev.key === ' ' ? 'Space' : ev.key}
                             </span>
                           </td>
-                          <td className="py-3 text-zinc-300 text-[11px]">
+                          <td className="py-3 text-muted-foreground text-[11px]">
                             {ev.code}
                           </td>
-                          <td className="py-3 text-center text-zinc-300">
+                          <td className="py-3 text-center text-muted-foreground">
                             {ev.which}
                           </td>
-                          <td className="py-3 text-right font-sans font-semibold text-zinc-300">
+                          <td className="py-3 text-right font-sans font-semibold text-foreground">
                             {modifiersStr ? (
-                              <span className="text-[10px] bg-zinc-900 border border-zinc-750 px-1.5 py-0.5 rounded tracking-wider text-zinc-300">
+                              <span className="text-[10px] bg-muted border border-border px-1.5 py-0.5 rounded tracking-wider text-foreground">
                                 {modifiersStr}
                               </span>
                             ) : (
-                              <span className="text-zinc-500 font-normal">-</span>
+                              <span className="text-muted-foreground font-normal">-</span>
                             )}
                           </td>
                         </tr>
@@ -738,14 +747,14 @@ export function KeyboardInspector() {
                 </table>
               </div>
             ) : (
-              <div className="text-center py-24 border border-dashed border-zinc-800 rounded-lg">
-                <p className="text-zinc-450 text-sm">
+              <div className="text-center py-24 border border-dashed border-border rounded-lg bg-muted/20">
+                <p className="text-muted-foreground text-sm">
                   Keystroke log is empty. Press keys to populate.
                 </p>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
