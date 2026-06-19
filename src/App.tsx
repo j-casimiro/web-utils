@@ -24,6 +24,8 @@ import { HashGenerator } from '@/components/tools/hash-generator';
 import { LoremGenerator } from '@/components/tools/lorem-generator';
 import { ColorConverter } from '@/components/tools/color-converter';
 import { KeyboardInspector } from '@/components/tools/keyboard-inspector';
+import { CronBuilder } from '@/components/tools/cron-builder';
+import { RegexTester } from '@/components/tools/regex-tester';
 
 interface ToolItem {
   id: string;
@@ -74,6 +76,20 @@ const TOOLS: ToolItem[] = [
     description:
       'Press any key to inspect JavaScript event properties, active modifier keys, and visual key mapping.',
     component: KeyboardInspector,
+  },
+  {
+    id: 'cron-builder',
+    title: 'Cron Expression Builder & Explainer',
+    description:
+      'Demystify and build cron schedules interactively with natural language explanations and execution forecasts.',
+    component: CronBuilder,
+  },
+  {
+    id: 'regex-tester',
+    title: 'RegEx Tester & Visualizer',
+    description:
+      'Test and validate regular expressions against sample texts with match highlights, capture groups, and code generators.',
+    component: RegexTester,
   },
   {
     id: 'qr-generator',
