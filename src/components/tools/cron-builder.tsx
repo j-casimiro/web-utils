@@ -408,12 +408,13 @@ export function CronBuilder() {
                 placeholder="* * * * *"
                 className="font-mono text-base tracking-widest border-border bg-background text-foreground h-11 focus-visible:ring-ring focus-visible:border-border pr-20"
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={copyToClipboard}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-[84px] border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground h-8 text-xs font-mono flex items-center justify-center"
-              >
+              <div className="absolute right-1.5 top-0 bottom-0 flex items-center justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyToClipboard}
+                  className="w-[84px] border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground h-8 text-xs font-mono flex items-center justify-center"
+                >
                 {copied ? (
                   <>
                     <Check className="h-3.5 w-3.5 mr-1.5 text-emerald-500" />
@@ -426,6 +427,7 @@ export function CronBuilder() {
                   </>
                 )}
               </Button>
+              </div>
             </div>
           </div>
         </div>
