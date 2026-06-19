@@ -23,6 +23,7 @@ import { JWTDecoder } from '@/components/tools/jwt-decoder';
 import { HashGenerator } from '@/components/tools/hash-generator';
 import { LoremGenerator } from '@/components/tools/lorem-generator';
 import { ColorConverter } from '@/components/tools/color-converter';
+import { KeyboardInspector } from '@/components/tools/keyboard-inspector';
 
 interface ToolItem {
   id: string;
@@ -66,6 +67,13 @@ const TOOLS: ToolItem[] = [
     description:
       'Convert HEX, RGB, HSL, and CMYK colors, build harmonious palettes, and check accessibility contrast.',
     component: ColorConverter,
+  },
+  {
+    id: 'keyboard-inspector',
+    title: 'Keyboard Event Inspector',
+    description:
+      'Press any key to inspect JavaScript event properties, active modifier keys, and visual key mapping.',
+    component: KeyboardInspector,
   },
   {
     id: 'qr-generator',
