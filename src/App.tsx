@@ -26,6 +26,7 @@ import { ColorConverter } from '@/components/tools/color-converter';
 import { KeyboardInspector } from '@/components/tools/keyboard-inspector';
 import { CronBuilder } from '@/components/tools/cron-builder';
 import { RegexTester } from '@/components/tools/regex-tester';
+import { HttpStatusExplorer } from '@/components/tools/http-status-explorer';
 
 interface ToolItem {
   id: string;
@@ -35,6 +36,13 @@ interface ToolItem {
 }
 
 const TOOLS: ToolItem[] = [
+  {
+    id: 'http-status-explorer',
+    title: 'HTTP Status Code Explorer',
+    description:
+      'Search and browse a comprehensive offline dictionary of HTTP status codes with caching and SEO implications.',
+    component: HttpStatusExplorer,
+  },
   {
     id: 'json-formatter',
     title: 'JSON Formatter',
