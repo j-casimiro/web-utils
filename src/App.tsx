@@ -27,6 +27,7 @@ import { KeyboardInspector } from '@/components/tools/keyboard-inspector';
 import { CronBuilder } from '@/components/tools/cron-builder';
 import { RegexTester } from '@/components/tools/regex-tester';
 import { HttpStatusExplorer } from '@/components/tools/http-status-explorer';
+import { UrlParser } from '@/components/tools/url-parser';
 
 interface ToolItem {
   id: string;
@@ -36,6 +37,13 @@ interface ToolItem {
 }
 
 const TOOLS: ToolItem[] = [
+  {
+    id: 'url-parser',
+    title: 'URL Parser & Query Builder',
+    description:
+      'Parse messy URLs into editable components and interactively build query strings.',
+    component: UrlParser,
+  },
   {
     id: 'http-status-explorer',
     title: 'HTTP Status Code Explorer',
