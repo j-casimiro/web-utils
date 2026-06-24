@@ -76,8 +76,8 @@ const FRAGMENT_SHADER = `
     p.x *= aspect;
 
     // Camera settings
-    float camDist = 5.5;
-    float camAngle = 0.16; // ~9 degrees inclination (very flat)
+    float camDist = 18.0;
+    float camAngle = 0.15; // ~8.5 degrees inclination (very flat)
     float cosA = cos(camAngle);
     float sinA = sin(camAngle);
     
@@ -89,8 +89,8 @@ const FRAGMENT_SHADER = `
     vec3 right = vec3(1.0, 0.0, 0.0);
     vec3 up = vec3(0.0, cosA, sinA);
     
-    // Ray direction: zoom factor = 0.44
-    vec3 rd = normalize(forward * 0.44 + p.x * right + p.y * up);
+    // Ray direction: zoom factor = 1.1 (telephoto zoom to correct perspective)
+    vec3 rd = normalize(forward * 1.1 + p.x * right + p.y * up);
 
     // Ray marching loop variables
     vec3 pos = ro;
@@ -111,7 +111,7 @@ const FRAGMENT_SHADER = `
       }
       
       // Adaptive step size
-      float dt = 0.07 + 0.05 * r;
+      float dt = 0.1 + 0.065 * r;
       
       // Gravity pull (accel = -1.5 * pos / r^5)
       vec3 accel = -1.5 * pos / (r2 * r2 * r);
@@ -126,20 +126,20 @@ const FRAGMENT_SHADER = `
         vec3 intersect = pos + vel * dt * t_intersect;
         float dR = length(intersect.xz);
         
-        // Accretion disk radius: 1.8 to 4.8
-        if (dR >= 1.8 && dR <= 4.8) {
-          float diskMask = smoothstep(1.8, 2.1, dR) * smoothstep(4.8, 3.8, dR);
-          float radialGlow = exp(-(dR - 1.8) * 0.5) * diskMask;
+        // Accretion disk radius: 2.6 to 9.0 (scaled to match camera distance)
+        if (dR >= 2.6 && dR <= 9.0) {
+          float diskMask = smoothstep(2.6, 3.0, dR) * smoothstep(9.0, 7.5, dR);
+          float radialGlow = exp(-(dR - 2.6) * 0.35) * diskMask;
           
           float phi = atan(intersect.z, intersect.x);
-          float omega = 2.0 * pow(dR, -1.5); // Keplerian rotation speed
+          float omega = 2.2 * pow(dR, -1.5); // Keplerian rotation speed
           float phi_rot = phi - u_time * u_speed * omega;
           
           // Spiral structure
-          float spiral = sin(phi_rot * 3.0 + dR * 1.5) * 0.5 + 0.5;
+          float spiral = sin(phi_rot * 3.0 + dR * 0.8) * 0.5 + 0.5;
           
           // Noise/turbulence
-          float turb = fbm(vec2(dR * 1.5, phi_rot * 1.0)) * 0.55 + 0.45;
+          float turb = fbm(vec2(dR * 1.0, phi_rot * 0.8)) * 0.55 + 0.45;
           
           // Doppler beaming
           float doppler = 1.1 - 0.5 * (intersect.x / dR);
@@ -151,14 +151,14 @@ const FRAGMENT_SHADER = `
           if (u_color_mode == 0) {
             tempColor = u_color_solid;
           } else if (u_color_mode == 1 || u_color_mode == 3) {
-            float factor = clamp((dR - 1.8) / 3.0, 0.0, 1.0);
+            float factor = clamp((dR - 2.6) / 5.0, 0.0, 1.0);
             tempColor = mix(u_color_grad_start, u_color_grad_end, factor);
           } else {
             // Volcanic/Default (classic Gargantua colors)
-            if (dR < 2.6) {
-              tempColor = mix(vec3(1.0, 0.96, 0.92), vec3(1.0, 0.72, 0.28), (dR - 1.8) / 0.8);
+            if (dR < 3.8) {
+              tempColor = mix(vec3(1.0, 0.96, 0.92), vec3(1.0, 0.72, 0.28), (dR - 2.6) / 1.2);
             } else {
-              tempColor = mix(vec3(1.0, 0.72, 0.28), vec3(0.55, 0.1, 0.02), (dR - 2.6) / 2.2);
+              tempColor = mix(vec3(1.0, 0.72, 0.28), vec3(0.55, 0.1, 0.02), (dR - 3.8) / 5.2);
             }
           }
           
