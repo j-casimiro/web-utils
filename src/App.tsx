@@ -28,6 +28,7 @@ import { CronBuilder } from '@/components/tools/cron-builder';
 import { RegexTester } from '@/components/tools/regex-tester';
 import { HttpStatusExplorer } from '@/components/tools/http-status-explorer';
 import { UrlParser } from '@/components/tools/url-parser';
+import { AsciiShader } from '@/components/tools/ascii-shader';
 
 interface ToolItem {
   id: string;
@@ -37,6 +38,13 @@ interface ToolItem {
 }
 
 const TOOLS: ToolItem[] = [
+  {
+    id: 'ascii-shader',
+    title: 'ASCII Shader Sandbox',
+    description:
+      'Render procedural WebGL shaders (Perlin noise flow, plasma waves, matrix rain) or custom images as interactive colored ASCII grids.',
+    component: AsciiShader,
+  },
   {
     id: 'url-parser',
     title: 'URL Parser & Query Builder',
