@@ -2,23 +2,69 @@ import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// ─── Vertex Shader ────────────────────────────────────────────────────
-const VERTEX_SHADER = `
-  attribute vec2 position;
-  varying vec2 vUv;
+// ─── Vertex Shader (GLSL ES 3.00) ─────────────────────────────────────
+const VERTEX_SHADER = `#version 300 es
+  layout(location = 0) in vec2 position;
+  out vec2 vUv;
   void main() {
     vUv = position * 0.5 + 0.5;
     gl_Position = vec4(position, 0.0, 1.0);
   }
 `;
 
-const FRAGMENT_SHADER = `
+// ─── Simulation Shader — Gray-Scott reaction-diffusion ────────────────
+// Reads the previous chemical state (A in .x, B in .y) and integrates one
+// step. Run many times per frame via ping-pong framebuffers.
+const SIM_SHADER = `#version 300 es
   precision highp float;
 
+  uniform sampler2D u_state;
+  uniform vec2  u_res;   // simulation resolution
+  uniform float u_feed;
+  uniform float u_kill;
+
+  in vec2 vUv;
+  out vec4 outColor;
+
+  void main() {
+    vec2 t = 1.0 / u_res;
+
+    vec2 c = texture(u_state, vUv).xy;
+
+    // 9-point Laplacian (orthogonal 0.2, diagonal 0.05, center -1)
+    vec2 lap = c * -1.0;
+    lap += texture(u_state, vUv + t * vec2(-1.0, -1.0)).xy * 0.05;
+    lap += texture(u_state, vUv + t * vec2( 0.0, -1.0)).xy * 0.20;
+    lap += texture(u_state, vUv + t * vec2( 1.0, -1.0)).xy * 0.05;
+    lap += texture(u_state, vUv + t * vec2(-1.0,  0.0)).xy * 0.20;
+    lap += texture(u_state, vUv + t * vec2( 1.0,  0.0)).xy * 0.20;
+    lap += texture(u_state, vUv + t * vec2(-1.0,  1.0)).xy * 0.05;
+    lap += texture(u_state, vUv + t * vec2( 0.0,  1.0)).xy * 0.20;
+    lap += texture(u_state, vUv + t * vec2( 1.0,  1.0)).xy * 0.05;
+
+    float a = c.x;
+    float b = c.y;
+    float reaction = a * b * b;
+
+    const float dA = 1.0;
+    const float dB = 0.5;
+
+    float na = a + (dA * lap.x - reaction + u_feed * (1.0 - a));
+    float nb = b + (dB * lap.y + reaction - (u_kill + u_feed) * b);
+
+    outColor = vec4(clamp(na, 0.0, 1.0), clamp(nb, 0.0, 1.0), 0.0, 1.0);
+  }
+`;
+
+// ─── Display Shader — map concentration to ASCII glyph + theme ────────
+const DISPLAY_SHADER = `#version 300 es
+  precision highp float;
+
+  uniform sampler2D u_state;
+  uniform sampler2D u_font_atlas;
   uniform vec2  u_resolution;
-  uniform float u_time;
   uniform vec2  u_grid_size;
-  uniform float u_speed;
+  uniform float u_char_count;
   uniform float u_brightness;
 
   // Color theme uniforms
@@ -28,213 +74,46 @@ const FRAGMENT_SHADER = `
   uniform vec3  u_color_grad_end;
   uniform vec3  u_color_bg;
 
-  // Font atlas
-  uniform sampler2D u_font_atlas;
-  uniform float     u_char_count;
+  out vec4 fragColor;
 
-  varying vec2 vUv;
-
-  // ── Noise helpers ──────────────────────────────────────────────
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-  }
-
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
-               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
-  }
-
-  float fbm(vec2 p) {
-    float v = 0.0, a = 0.5;
-    mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
-    for (int i = 0; i < 4; i++) {
-      v += a * noise(p);
-      p = rot * p * 2.0 + vec2(100.0);
-      a *= 0.5;
-    }
-    return v;
-  }
-
-  // Helper for color temperature grading
-  vec3 getTemperatureColor(float r_eff) {
-    vec3 tempColor;
+  vec3 getThemeColor(float v) {
     if (u_color_mode == 0) {
-      tempColor = u_color_solid;
+      return u_color_solid;
     } else if (u_color_mode == 1 || u_color_mode == 3) {
-      float factor = clamp((r_eff - 2.6) / 6.4, 0.0, 1.0);
-      tempColor = mix(u_color_grad_start, u_color_grad_end, factor);
-    } else {
-      // Volcanic/Default (classic Gargantua colors)
-      if (r_eff < 3.8) {
-        tempColor = mix(vec3(1.0, 0.96, 0.92), vec3(1.0, 0.75, 0.35), clamp((r_eff - 2.6) / 1.2, 0.0, 1.0));
-      } else {
-        tempColor = mix(vec3(1.0, 0.75, 0.35), vec3(0.55, 0.1, 0.02), clamp((r_eff - 3.8) / 5.2, 0.0, 1.0));
-      }
+      return mix(u_color_grad_start, u_color_grad_end, clamp(v, 0.0, 1.0));
     }
-    return tempColor;
-  }
-
-  // Ray-Sphere intersection helper
-  vec2 intersectSphere(vec3 ro, vec3 rd, float r) {
-    float b = dot(ro, rd);
-    float c = dot(ro, ro) - r * r;
-    float h = b * b - c;
-    if (h < 0.0) return vec2(-1.0);
-    h = sqrt(h);
-    return vec2(-b - h, -b + h);
+    // Volcanic / multivalue
+    if (v < 0.5) {
+      return mix(vec3(1.0, 0.96, 0.92), vec3(1.0, 0.6, 0.15), clamp(v / 0.5, 0.0, 1.0));
+    }
+    return mix(vec3(1.0, 0.6, 0.15), vec3(0.5, 0.06, 0.02), clamp((v - 0.5) / 0.5, 0.0, 1.0));
   }
 
   void main() {
-    // 1. Grid setup for ASCII lookup
     vec2 gridCoords = floor(gl_FragCoord.xy / u_grid_size);
     vec2 localCoords = fract(gl_FragCoord.xy / u_grid_size);
     vec2 uv = (gridCoords + 0.5) * u_grid_size / u_resolution;
 
-    // Aspect-corrected coordinates centered at (0,0)
-    float aspect = u_resolution.x / u_resolution.y;
-    vec2 p = uv - 0.5;
-    p.x *= aspect;
+    // Sample chemical B, remap into a pleasing display range
+    float b = texture(u_state, uv).y;
+    float val = clamp((b - 0.08) * 5.5, 0.0, 1.0) * u_brightness;
+    val = clamp(val, 0.0, 1.0);
 
-    // 2. Camera Setup
-    // Nearly edge-on position — small inclination gives the flat Gargantua silhouette
-    vec3 ro = vec3(0.0, 1.15, -15.0);
-    vec3 target = vec3(0.0, 0.0, 0.0);
-
-    vec3 ww = normalize(target - ro);
-    vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
-    vec3 vv = normalize(cross(uu, ww));
-    // Standard FOV — camera is far enough back to see full disk
-    vec3 rd = normalize(p.x * uu + p.y * vv + 1.5 * ww);
-
-    // 3. Geodesic integration parameters
-    float Rs = 1.0;        // Schwarzschild radius (event horizon)
-    float r_in = 2.2;      // Inner radius of the accretion disk
-    float r_out = 8.5;     // Outer radius of the accretion disk
-
-    vec3 color = vec3(0.0);
-    float alpha = 0.0;
-    bool hitHorizon = false;
-
-    // ── Photon geodesic state ──────────────────────────────────────
-    // Integrate the Schwarzschild null geodesic so light bends strongly
-    // near the hole, wrapping the far side of the disk up and over the
-    // shadow (the defining Gargantua lensing halo).
-    vec3 pos = ro;
-    vec3 vel = rd;
-    // Conserved angular momentum (per unit) squared — drives the bending term
-    vec3 angMom = cross(pos, vel);
-    float h2 = dot(angMom, angMom);
-
-    // Dither start position slightly to break up banding
-    float dither = hash(gridCoords);
-    pos += vel * dither * 0.18;
-
-    vec3 dir = vel;
-
-    const int steps = 220;
-    const float dt = 0.16;
-
-    for (int i = 0; i < steps; i++) {
-      float r2 = dot(pos, pos);
-      float r = sqrt(r2);
-
-      // Event horizon capture
-      if (r < Rs * 1.02) {
-        hitHorizon = true;
-        break;
-      }
-      // Escaped to infinity — stop tracing
-      if (r > 22.0 && dot(pos, vel) > 0.0) break;
-
-      // Advance the geodesic (leapfrog-ish): step position, then bend velocity.
-      vec3 prevPos = pos;
-      pos += vel * dt;
-      // Schwarzschild photon deflection toward the singularity
-      vec3 accel = -1.5 * h2 * pos / pow(dot(pos, pos), 2.5);
-      vel += accel * dt;
-
-      // ── Disk-plane crossing test ─────────────────────────────────
-      // Detect where the ray crosses the equatorial plane (y = 0) and
-      // sample the infinitely-thin disk exactly there. A single ray may
-      // cross multiple times — front face, then the lensed far face.
-      if (prevPos.y * pos.y < 0.0) {
-        float frac = prevPos.y / (prevPos.y - pos.y);
-        vec3 hit = mix(prevPos, pos, frac);
-        float d_xz = length(hit.xz);
-
-        if (d_xz >= r_in && d_xz <= r_out) {
-          dir = normalize(vel);
-
-          // Keplerian rotation
-          float speed = u_time * u_speed * 1.5 / (sqrt(d_xz) + 0.1);
-          float cosA = cos(speed);
-          float sinA = sin(speed);
-          vec2 pr = vec2(hit.x * cosA - hit.z * sinA, hit.x * sinA + hit.z * cosA);
-
-          // Turbulent gas
-          float swirl = fbm(pr * 1.4 + vec2(0.0, d_xz * 0.8));
-          float fine = fbm(pr * 4.0);
-
-          // Smooth radial brightness falloff (hot inner, dim outer)
-          float radial = exp(-0.42 * (d_xz - r_in));
-          // Soft inner & outer edge fade
-          float edge = smoothstep(r_in, r_in + 0.6, d_xz) * (1.0 - smoothstep(r_out - 2.0, r_out, d_xz));
-
-          float local_val = (0.35 + 0.95 * swirl) * (0.6 + 0.4 * fine) * (0.3 + 1.7 * radial) * edge;
-
-          // Doppler beaming — orbital direction at the hit point
-          vec3 rot_dir = normalize(vec3(-hit.z, 0.0, hit.x));
-          float doppler = 1.0 + 1.8 * dot(dir, rot_dir) * (0.45 / sqrt(d_xz));
-          doppler = clamp(doppler, 0.05, 4.5);
-          local_val *= doppler;
-
-          // Temperature color
-          float r_eff = 2.6 + (d_xz - r_in) * 1.1;
-          vec3 stepColor = getTemperatureColor(r_eff);
-          // Hot-white on the approaching side, dark red on the receding side
-          stepColor = mix(stepColor, vec3(1.25, 1.18, 1.05), clamp((doppler - 1.0) * 0.5, 0.0, 1.0));
-          stepColor = mix(stepColor, vec3(0.42, 0.05, 0.01), clamp((1.0 - doppler) * 0.9, 0.0, 1.0));
-
-          // Composite this disk crossing over what's accumulated so far
-          float a = clamp(local_val * 0.9, 0.0, 1.0);
-          color += (1.0 - alpha) * stepColor * local_val * 1.5;
-          alpha += (1.0 - alpha) * a;
-
-          if (alpha > 0.99) { alpha = 1.0; break; }
-        }
-      }
-    }
-
-    // 4. Background Starfield with gravitational lensing deflection
-    if (!hitHorizon) {
-      vec3 starDir = normalize(vel);
-      float starIntensity = step(0.9968, hash(floor(starDir.xy * 240.0))) * 0.15;
-      starIntensity += step(0.9991, hash(floor(starDir.xz * 360.0 + vec2(42.0, 79.0)))) * 0.45;
-      vec3 starColor = vec3(0.9, 0.93, 1.0) * starIntensity;
-      
-      // Add stars, masked by accretion disk alpha
-      color += (1.0 - alpha) * starColor;
-      alpha += (1.0 - alpha) * starIntensity;
-    }
-
-    // Apply brightness control
-    float finalGlow = alpha * u_brightness * 1.5;
-    float val = clamp(finalGlow, 0.0, 1.0);
-
-    // ─── ASCII character lookup ─────────────────────────────
     float charIdx = floor(val * u_char_count);
     charIdx = clamp(charIdx, 0.0, u_char_count - 1.0);
 
     vec2 fontUv = vec2((charIdx + localCoords.x) / u_char_count, localCoords.y);
-    float charIntensity = texture2D(u_font_atlas, fontUv).r;
+    float charIntensity = texture(u_font_atlas, fontUv).r;
 
-    // Mix final color with theme background color
-    gl_FragColor = vec4(mix(u_color_bg, color, charIntensity), 1.0);
+    vec3 col = getThemeColor(val);
+    fragColor = vec4(mix(u_color_bg, col, charIntensity), 1.0);
   }
 `;
+
+// Gray-Scott parameters — "coral" regime: grows to fill the field with a
+// slowly-evolving labyrinth.
+const FEED = 0.0545;
+const KILL = 0.062;
 
 const hexToRgb = (hex: string): [number, number, number] => {
   const cleanHex = hex.replace('#', '');
@@ -244,7 +123,7 @@ const hexToRgb = (hex: string): [number, number, number] => {
   return [r, g, b];
 };
 
-interface BlackholeShaderProps {
+interface TuringShaderProps {
   chars?: string;
   charWidth?: number;
   charHeight?: number;
@@ -258,11 +137,18 @@ interface BlackholeShaderProps {
   colorBg?: string;
   isParentScreensaver?: boolean;
   onExitParentScreensaver?: () => void;
-  // Lets a parent read the rendered framebuffer (PNG / text-art export)
   externalCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
 }
 
-export function BlackholeShader({
+interface SimState {
+  texs: WebGLTexture[];
+  fbos: WebGLFramebuffer[];
+  w: number;
+  h: number;
+  src: number;
+}
+
+export function TuringShader({
   chars = ' .,:;+*?%S#@',
   charWidth = 8,
   charHeight = 14,
@@ -277,13 +163,12 @@ export function BlackholeShader({
   isParentScreensaver,
   onExitParentScreensaver,
   externalCanvasRef,
-}: BlackholeShaderProps) {
+}: TuringShaderProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const glRef = useRef<WebGLRenderingContext | null>(null);
-  const programRef = useRef<WebGLProgram | null>(null);
+  const glRef = useRef<WebGL2RenderingContext | null>(null);
   const fontAtlasTextureRef = useRef<WebGLTexture | null>(null);
+  const simRef = useRef<SimState | null>(null);
   const animationFrameIdRef = useRef<number | null>(null);
-  const timeRef = useRef(0);
 
   const [localScreensaver, setLocalScreensaver] = useState(false);
   const isScreensaver =
@@ -308,7 +193,7 @@ export function BlackholeShader({
     };
   }, [isScreensaver, setIsScreensaver]);
 
-  // Keep refs in sync with state/props to avoid render-phase modifications
+  // Keep refs in sync with props to avoid render-phase modifications
   const charsRef = useRef(chars);
   const charWidthRef = useRef(charWidth);
   const charHeightRef = useRef(charHeight);
@@ -348,7 +233,7 @@ export function BlackholeShader({
 
   // Build the font atlas texture
   const buildFontAtlas = useCallback(
-    (gl: WebGLRenderingContext, charsList: string, w: number, h: number) => {
+    (gl: WebGL2RenderingContext, charsList: string, w: number, h: number) => {
       if (fontAtlasTextureRef.current) {
         gl.deleteTexture(fontAtlasTextureRef.current);
       }
@@ -391,7 +276,7 @@ export function BlackholeShader({
     [],
   );
 
-  // Update Font Atlas on prop change
+  // Update font atlas on prop change
   useEffect(() => {
     const gl = glRef.current;
     if (gl) {
@@ -404,14 +289,19 @@ export function BlackholeShader({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
+    const gl = canvas.getContext('webgl2', { preserveDrawingBuffer: true });
     if (!gl) {
-      console.error('WebGL not supported');
+      console.error('WebGL2 not supported');
       return;
     }
     glRef.current = gl;
 
-    // Compile shaders
+    // Float render targets are required for stable reaction-diffusion
+    if (!gl.getExtension('EXT_color_buffer_float')) {
+      console.error('EXT_color_buffer_float not supported');
+      return;
+    }
+
     const createShader = (type: number, source: string) => {
       const shader = gl.createShader(type);
       if (!shader) return null;
@@ -425,35 +315,38 @@ export function BlackholeShader({
       return shader;
     };
 
-    const vs = createShader(gl.VERTEX_SHADER, VERTEX_SHADER);
-    const fs = createShader(gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
-    if (!vs || !fs) return;
+    const createProgram = (vsSource: string, fsSource: string) => {
+      const vs = createShader(gl.VERTEX_SHADER, vsSource);
+      const fs = createShader(gl.FRAGMENT_SHADER, fsSource);
+      if (!vs || !fs) return null;
+      const program = gl.createProgram();
+      if (!program) return null;
+      gl.attachShader(program, vs);
+      gl.attachShader(program, fs);
+      gl.linkProgram(program);
+      gl.deleteShader(vs);
+      gl.deleteShader(fs);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error('Program link error:', gl.getProgramInfoLog(program));
+        return null;
+      }
+      return program;
+    };
 
-    const program = gl.createProgram();
-    if (!program) return;
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
+    const simProgram = createProgram(VERTEX_SHADER, SIM_SHADER);
+    const displayProgram = createProgram(VERTEX_SHADER, DISPLAY_SHADER);
+    if (!simProgram || !displayProgram) return;
 
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error('Program link error:', gl.getProgramInfoLog(program));
-      return;
-    }
-    programRef.current = program;
-
-    // Full-screen quad
+    // Full-screen quad (position attribute is locked to location 0)
     const vertices = new Float32Array([
       -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
     ]);
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
-    const posLoc = gl.getAttribLocation(program, 'position');
-    gl.enableVertexAttribArray(posLoc);
-    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-
-    // Initial Font atlas load
     buildFontAtlas(
       gl,
       charsRef.current,
@@ -461,81 +354,171 @@ export function BlackholeShader({
       charHeightRef.current,
     );
 
-    // Resize observer
+    // Seed the initial chemical field: A = 1 everywhere, with scattered
+    // circular blobs of B that nucleate the pattern.
+    const makeSeed = (w: number, h: number) => {
+      const data = new Float32Array(w * h * 4);
+      for (let i = 0; i < w * h; i++) {
+        data[i * 4] = 1.0; // A
+        data[i * 4 + 3] = 1.0;
+      }
+      const spots = Math.max(24, Math.floor((w * h) / 1400));
+      for (let s = 0; s < spots; s++) {
+        const cx = Math.floor(Math.random() * w);
+        const cy = Math.floor(Math.random() * h);
+        const rad = 2 + Math.floor(Math.random() * 5);
+        for (let dy = -rad; dy <= rad; dy++) {
+          for (let dx = -rad; dx <= rad; dx++) {
+            if (dx * dx + dy * dy > rad * rad) continue;
+            const x = ((cx + dx) % w + w) % w;
+            const y = ((cy + dy) % h + h) % h;
+            const idx = (y * w + x) * 4;
+            data[idx] = 0.0; // A
+            data[idx + 1] = 1.0; // B
+          }
+        }
+      }
+      return data;
+    };
+
+    // (Re)allocate the ping-pong simulation textures at the given size.
+    const initSim = (w: number, h: number) => {
+      const old = simRef.current;
+      if (old) {
+        old.texs.forEach((t) => gl.deleteTexture(t));
+        old.fbos.forEach((f) => gl.deleteFramebuffer(f));
+      }
+      const seed = makeSeed(w, h);
+      const texs: WebGLTexture[] = [];
+      const fbos: WebGLFramebuffer[] = [];
+      for (let i = 0; i < 2; i++) {
+        const tex = gl.createTexture()!;
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA32F,
+          w,
+          h,
+          0,
+          gl.RGBA,
+          gl.FLOAT,
+          i === 0 ? seed : null,
+        );
+        // NEAREST avoids depending on OES_texture_float_linear (32F textures
+        // are not linearly filterable by default in WebGL2).
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        const fbo = gl.createFramebuffer()!;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+        gl.framebufferTexture2D(
+          gl.FRAMEBUFFER,
+          gl.COLOR_ATTACHMENT0,
+          gl.TEXTURE_2D,
+          tex,
+          0,
+        );
+        texs.push(tex);
+        fbos.push(fbo);
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      simRef.current = { texs, fbos, w, h, src: 0 };
+    };
+
     const resizeObserver = new ResizeObserver(() => {
       const parent = canvas.parentElement;
       if (parent) {
         canvas.width = parent.clientWidth;
         canvas.height = parent.clientHeight || 500;
         gl.viewport(0, 0, canvas.width, canvas.height);
+        // Run the simulation at ~1/3 canvas resolution for performance;
+        // the display pass upsamples it smoothly.
+        const simW = Math.max(64, Math.floor(canvas.width / 3));
+        const simH = Math.max(64, Math.floor(canvas.height / 3));
+        initSim(simW, simH);
       }
     });
     resizeObserver.observe(canvas.parentElement || canvas);
 
-    let lastTime = 0;
-
-    const render = (now: number) => {
-      if (lastTime === 0) {
-        lastTime = now;
+    const render = () => {
+      const sim = simRef.current;
+      if (!sim) {
         animationFrameIdRef.current = requestAnimationFrame(render);
         return;
       }
-      const dt = (now - lastTime) * 0.001;
-      lastTime = now;
-      timeRef.current += dt;
 
-      gl.clearColor(0.0, 0.0, 0.0, 1.0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.useProgram(program);
+      // ── Simulation passes (ping-pong) ──────────────────────────────
+      gl.useProgram(simProgram);
+      gl.viewport(0, 0, sim.w, sim.h);
+      gl.uniform2f(gl.getUniformLocation(simProgram, 'u_res'), sim.w, sim.h);
+      gl.uniform1f(gl.getUniformLocation(simProgram, 'u_feed'), FEED);
+      gl.uniform1f(gl.getUniformLocation(simProgram, 'u_kill'), KILL);
+      gl.uniform1i(gl.getUniformLocation(simProgram, 'u_state'), 0);
 
-      // Uniforms
+      const iters = Math.max(1, Math.min(40, Math.round(14 * speedRef.current)));
+      for (let i = 0; i < iters; i++) {
+        const dst = 1 - sim.src;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, sim.fbos[dst]);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, sim.texs[sim.src]);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        sim.src = dst;
+      }
+
+      // ── Display pass ───────────────────────────────────────────────
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      gl.useProgram(displayProgram);
+
       gl.uniform2f(
-        gl.getUniformLocation(program, 'u_resolution'),
+        gl.getUniformLocation(displayProgram, 'u_resolution'),
         canvas.width,
         canvas.height,
       );
-      gl.uniform1f(gl.getUniformLocation(program, 'u_time'), timeRef.current);
       gl.uniform2f(
-        gl.getUniformLocation(program, 'u_grid_size'),
+        gl.getUniformLocation(displayProgram, 'u_grid_size'),
         charWidthRef.current,
         charHeightRef.current,
       );
       gl.uniform1f(
-        gl.getUniformLocation(program, 'u_char_count'),
+        gl.getUniformLocation(displayProgram, 'u_char_count'),
         charsRef.current.length,
       );
-      gl.uniform1f(gl.getUniformLocation(program, 'u_speed'), speedRef.current);
       gl.uniform1f(
-        gl.getUniformLocation(program, 'u_brightness'),
+        gl.getUniformLocation(displayProgram, 'u_brightness'),
         brightnessRef.current,
       );
-
       gl.uniform1i(
-        gl.getUniformLocation(program, 'u_color_mode'),
+        gl.getUniformLocation(displayProgram, 'u_color_mode'),
         colorModeRef.current,
       );
       gl.uniform3fv(
-        gl.getUniformLocation(program, 'u_color_solid'),
+        gl.getUniformLocation(displayProgram, 'u_color_solid'),
         colorSolidRef.current,
       );
       gl.uniform3fv(
-        gl.getUniformLocation(program, 'u_color_grad_start'),
+        gl.getUniformLocation(displayProgram, 'u_color_grad_start'),
         colorGradStartRef.current,
       );
       gl.uniform3fv(
-        gl.getUniformLocation(program, 'u_color_grad_end'),
+        gl.getUniformLocation(displayProgram, 'u_color_grad_end'),
         colorGradEndRef.current,
       );
       gl.uniform3fv(
-        gl.getUniformLocation(program, 'u_color_bg'),
+        gl.getUniformLocation(displayProgram, 'u_color_bg'),
         colorBgRef.current,
       );
 
-      // Bind font atlas
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, sim.texs[sim.src]);
+      gl.uniform1i(gl.getUniformLocation(displayProgram, 'u_state'), 0);
+
       if (fontAtlasTextureRef.current) {
-        gl.activeTexture(gl.TEXTURE0);
+        gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, fontAtlasTextureRef.current);
-        gl.uniform1i(gl.getUniformLocation(program, 'u_font_atlas'), 0);
+        gl.uniform1i(gl.getUniformLocation(displayProgram, 'u_font_atlas'), 1);
       }
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -548,11 +531,16 @@ export function BlackholeShader({
       resizeObserver.disconnect();
       if (animationFrameIdRef.current)
         cancelAnimationFrame(animationFrameIdRef.current);
+      const sim = simRef.current;
+      if (sim) {
+        sim.texs.forEach((t) => gl.deleteTexture(t));
+        sim.fbos.forEach((f) => gl.deleteFramebuffer(f));
+        simRef.current = null;
+      }
       if (fontAtlasTextureRef.current)
         gl.deleteTexture(fontAtlasTextureRef.current);
-      gl.deleteProgram(program);
-      gl.deleteShader(vs);
-      gl.deleteShader(fs);
+      gl.deleteProgram(simProgram);
+      gl.deleteProgram(displayProgram);
       gl.deleteBuffer(buffer);
     };
   }, [buildFontAtlas]);
@@ -563,7 +551,7 @@ export function BlackholeShader({
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .blackhole-crt::after {
+        .turing-crt::after {
           content: " ";
           display: block;
           position: absolute;
@@ -576,7 +564,7 @@ export function BlackholeShader({
           opacity: 0.7;
         }
 
-        .blackhole-vignette::before {
+        .turing-vignette::before {
           content: "";
           position: absolute;
           top: 0; left: 0; right: 0; bottom: 0;
@@ -596,7 +584,7 @@ export function BlackholeShader({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-60"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
             </span>
-            Gargantua
+            Turing Patterns
           </div>
         )}
 
@@ -621,7 +609,7 @@ export function BlackholeShader({
         )}
 
         <div
-          className={`w-full h-full relative blackhole-vignette ${crt ? 'blackhole-crt' : ''}`}
+          className={`w-full h-full relative turing-vignette ${crt ? 'turing-crt' : ''}`}
         >
           <canvas
             ref={(el) => {

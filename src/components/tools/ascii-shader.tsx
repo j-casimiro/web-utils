@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { BlackholeShader } from './blackhole-shader';
+import { TuringShader } from './turing-shader';
 
 interface ColorTheme {
   name: string;
@@ -16,7 +17,7 @@ interface ColorTheme {
 
 interface Preset {
   name: string;
-  mode: 0 | 1 | 2 | 3 | 4 | 5; // 0 = Perlin, 1 = Plasma, 2 = Matrix, 3 = Image, 4 = Galaxy, 5 = Blackhole
+  mode: 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0 = Perlin, 1 = Plasma, 2 = Matrix, 3 = Image, 4 = Galaxy, 5 = Blackhole
   chars: string;
   charWidth: number;
   charHeight: number;
@@ -121,6 +122,18 @@ const PRESETS: Preset[] = [
     speed: 1.4,
     brightness: 1.0,
     themeIndex: 2,
+    crt: true
+  },
+  {
+    name: 'Turing Patterns',
+    mode: 6,
+    chars: ' .:-=+*#%@',
+    charWidth: 8,
+    charHeight: 14,
+    scale: 1.0,
+    speed: 1.0,
+    brightness: 1.1,
+    themeIndex: 1, // Amber CRT
     crt: true
   }
 ];
@@ -374,7 +387,7 @@ const FRAGMENT_SHADER_SOURCE = `
 
 export function AsciiShader() {
   // Preset or customized states
-  const [mode, setMode] = useState<0 | 1 | 2 | 3 | 4 | 5>(5);
+  const [mode, setMode] = useState<0 | 1 | 2 | 3 | 4 | 5 | 6>(5);
   const [chars, setChars] = useState(' .,:;+*?%S#@');
   const [charWidth, setCharWidth] = useState(8);
   const [charHeight, setCharHeight] = useState(14);
@@ -409,6 +422,9 @@ export function AsciiShader() {
   }, [isScreensaver]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Gargantua (mode 5) renders to its own internal canvas; this ref exposes it
+  // so exports (PNG / text art) can read the right framebuffer.
+  const blackholeCanvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
   const programRef = useRef<WebGLProgram | null>(null);
   const fontAtlasTextureRef = useRef<WebGLTexture | null>(null);
@@ -838,18 +854,48 @@ export function AsciiShader() {
 
   // Generate ASCII block representational copy
   const getSnapshotText = () => {
-    const canvas = canvasRef.current;
+    const canvas =
+      mode === 5 || mode === 6 ? blackholeCanvasRef.current : canvasRef.current;
     if (!canvas) return '';
 
     const cols = Math.floor(canvas.width / charWidth);
     const rows = Math.floor(canvas.height / charHeight);
     let text = '';
 
+    // Gargantua and Turing have no closed-form JS model, so sample their
+    // rendered framebuffer directly: downscale to one pixel per glyph cell
+    // and map luminance onto the ramp.
+    let blackholeLuma: number[] | null = null;
+    if (mode === 5 || mode === 6) {
+      const tmp = document.createElement('canvas');
+      tmp.width = cols;
+      tmp.height = rows;
+      const tctx = tmp.getContext('2d');
+      if (tctx) {
+        tctx.drawImage(canvas, 0, 0, cols, rows);
+        const data = tctx.getImageData(0, 0, cols, rows).data;
+        blackholeLuma = [];
+        for (let i = 0; i < cols * rows; i++) {
+          const o = i * 4;
+          blackholeLuma[i] =
+            (0.299 * data[o] + 0.587 * data[o + 1] + 0.114 * data[o + 2]) / 255;
+        }
+      }
+    }
+
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
         const nx = x / cols;
         const ny = 1.0 - y / rows;
         let val = 0.0;
+
+        if (mode === 5 || mode === 6) {
+          // Luminance already encodes brightness from the live render
+          val = blackholeLuma ? blackholeLuma[y * cols + x] : 0.0;
+          const charIdx = Math.floor(val * chars.length);
+          text += chars[Math.min(charIdx, chars.length - 1)];
+          continue;
+        }
 
         if (mode === 0) {
           val = jsNoiseFbm(nx * scale, ny * scale + timeRef.current * speed * 0.15);
@@ -901,7 +947,8 @@ export function AsciiShader() {
   };
 
   const downloadPng = () => {
-    const canvas = canvasRef.current;
+    const canvas =
+      mode === 5 || mode === 6 ? blackholeCanvasRef.current : canvasRef.current;
     if (!canvas) return;
 
     const dataUrl = canvas.toDataURL('image/png');
@@ -958,7 +1005,7 @@ export function AsciiShader() {
             <div className="absolute top-4 left-4 z-20 bg-background/55 backdrop-blur-md border border-border/30 text-[10px] px-2.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg select-none font-bold uppercase tracking-wider text-muted-foreground">
               <Terminal className="w-3.5 h-3.5 text-primary" />
               <span>
-                {mode === 5 ? 'Gargantua Black Hole' : mode === 4 ? 'Galaxy Mode' : mode === 3 ? 'Image Mode' : mode === 0 ? 'fBm Noise' : mode === 1 ? 'Sine Plasma' : 'Matrix Rain'}
+                {mode === 6 ? 'Turing Patterns' : mode === 5 ? 'Gargantua Black Hole' : mode === 4 ? 'Galaxy Mode' : mode === 3 ? 'Image Mode' : mode === 0 ? 'fBm Noise' : mode === 1 ? 'Sine Plasma' : 'Matrix Rain'}
               </span>
             </div>
           )}
@@ -999,6 +1046,24 @@ export function AsciiShader() {
                 colorBg={activeTheme.bg}
                 isParentScreensaver={isScreensaver}
                 onExitParentScreensaver={() => setIsScreensaver(false)}
+                externalCanvasRef={blackholeCanvasRef}
+              />
+            ) : mode === 6 ? (
+              <TuringShader
+                chars={chars}
+                charWidth={charWidth}
+                charHeight={charHeight}
+                speed={speed}
+                brightness={brightness}
+                crt={crt}
+                colorMode={activeTheme.mode}
+                colorSolid={activeTheme.solid}
+                colorGradStart={activeTheme.gradStart}
+                colorGradEnd={activeTheme.gradEnd}
+                colorBg={activeTheme.bg}
+                isParentScreensaver={isScreensaver}
+                onExitParentScreensaver={() => setIsScreensaver(false)}
+                externalCanvasRef={blackholeCanvasRef}
               />
             ) : (
               <canvas
@@ -1042,20 +1107,21 @@ export function AsciiShader() {
             
             <div className="space-y-3">
               <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">Shader Algorithm</label>
-              <div className="grid grid-cols-6 gap-1">
-                {(['fBm', 'Plasma', 'Matrix', 'Image', 'Galaxy', 'Blackhole'] as const).map((label, idx) => (
+              <div className="grid grid-cols-7 gap-1">
+                {(['fBm', 'Plasma', 'Matrix', 'Image', 'Galaxy', 'Blackhole', 'Turing'] as const).map((label, idx) => (
                   <Button
                     key={label}
                     size="sm"
                     variant={mode === idx ? 'default' : 'outline'}
                     onClick={() => {
-                      setMode(idx as 0 | 1 | 2 | 3 | 4 | 5);
+                      setMode(idx as 0 | 1 | 2 | 3 | 4 | 5 | 6);
                       const modePresets: Record<number, number> = {
                         0: 3, // Mode 0 (fBm) -> Amber Terminal Flow
                         1: 4, // Mode 1 (Plasma) -> Ocean Plasma Waves
                         2: 2, // Mode 2 (Matrix) -> Matrix Digital Rain
                         4: 1, // Mode 4 (Galaxy) -> Andromeda Galaxy
                         5: 0, // Mode 5 (Blackhole) -> Gargantua Black Hole
+                        6: 7, // Mode 6 (Turing) -> Turing Patterns
                       };
                       const presetIdx = modePresets[idx];
                       if (presetIdx !== undefined) {
@@ -1164,7 +1230,7 @@ export function AsciiShader() {
               </div>
             </div>
 
-            {mode !== 2 && mode !== 3 && (
+            {mode !== 2 && mode !== 3 && mode !== 5 && mode !== 6 && (
               <div className="space-y-3">
                 <div className="flex justify-between text-xs">
                   <span className="font-semibold text-muted-foreground">Noise Zoom / Scale</span>
