@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import { Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -77,107 +77,151 @@ const FRAGMENT_SHADER = `
     return tempColor;
   }
 
+  // Ray-Sphere intersection helper
+  vec2 intersectSphere(vec3 ro, vec3 rd, float r) {
+    float b = dot(ro, rd);
+    float c = dot(ro, ro) - r * r;
+    float h = b * b - c;
+    if (h < 0.0) return vec2(-1.0);
+    h = sqrt(h);
+    return vec2(-b - h, -b + h);
+  }
+
   void main() {
+    // 1. Grid setup for ASCII lookup
     vec2 gridCoords = floor(gl_FragCoord.xy / u_grid_size);
     vec2 localCoords = fract(gl_FragCoord.xy / u_grid_size);
     vec2 uv = (gridCoords + 0.5) * u_grid_size / u_resolution;
 
-    // Aspect-corrected centered coordinates
+    // Aspect-corrected coordinates centered at (0,0)
     float aspect = u_resolution.x / u_resolution.y;
     vec2 p = uv - 0.5;
     p.x *= aspect;
 
-    // Radius from center
-    float d = length(p);
+    // 2. Camera Setup
+    // Nearly edge-on position — small inclination gives the flat Gargantua silhouette
+    vec3 ro = vec3(0.0, 1.15, -15.0);
+    vec3 target = vec3(0.0, 0.0, 0.0);
 
-    // Rotate coordinates for the tilted accretion disk (approx. 7 degrees)
-    float angle = 0.12;
-    float cosA = cos(angle);
-    float sinA = sin(angle);
-    vec2 p_rot = vec2(p.x * cosA - p.y * sinA, p.x * sinA + p.y * cosA);
+    vec3 ww = normalize(target - ro);
+    vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
+    vec3 vv = normalize(cross(uu, ww));
+    // Standard FOV — camera is far enough back to see full disk
+    vec3 rd = normalize(p.x * uu + p.y * vv + 1.5 * ww);
 
-    // 1. Event Horizon Mask (Shadow)
-    float horizonMask = smoothstep(0.084, 0.092, d);
+    // 3. Geodesic integration parameters
+    float Rs = 1.0;        // Schwarzschild radius (event horizon)
+    float r_in = 2.2;      // Inner radius of the accretion disk
+    float r_out = 8.5;     // Outer radius of the accretion disk
 
-    // 2. Photon Ring (right at the edge of event horizon)
-    float photonGlow = exp(-pow((d - 0.092) / 0.0022, 2.0)) * 0.9 * horizonMask;
-    photonGlow *= mix(0.7, 1.3, fbm(p * 20.0)); // subtle turbulence
-    photonGlow *= (1.0 - 0.45 * (p.x / (d + 0.001))); // Doppler beaming
-
-    // 3. Lensed Halo (Einstein Lensing Ray-Deflection Approximation)
-    // Stretch vertically in distance space to get a tilted lensed ring (elliptical)
-    float d_ring = length(vec2(p.x, p.y / 0.85));
-    float r_lens = d_ring - (0.018 / max(d_ring, 0.001));
-    float ringIntensity = exp(-pow((r_lens - 0.145) / 0.042, 2.0));
-    
-    // Polar swirl noise with differential velocity profile
-    float theta = atan(p.y, p.x);
-    float speed_profile = u_time * u_speed * (0.05 / max(d, 0.01));
-    float swirlNoise = fbm(vec2(d * 12.0, theta - speed_profile));
-    float noiseVal = mix(0.35, 1.65, swirlNoise);
-
-    // Sharp concentric gas filaments for the lensed ring
-    float ringFilaments = sin(r_lens * 160.0) * 0.45 + 0.55;
-    
-    // Doppler beaming (brighter on the left side)
-    float doppler = 1.0 - 0.55 * (p.x / (d + 0.001));
-    float ringGlow = ringIntensity * mix(0.3, 1.0, ringFilaments) * noiseVal * doppler * horizonMask;
-
-    // 4. Front Accretion Disk (straight horizontal band crossing in front of horizon)
-    // Add gravitational lensing curve (downward bend) in front of the black hole
-    float bend = 0.008 * exp(-pow(p_rot.x / 0.12, 2.0));
-    float diskY = p_rot.y + bend;
-
-    // Width flares out at the sides, very thin across the middle
-    float diskWidth = 0.012 + 0.045 * abs(p_rot.x);
-    float diskIntensity = exp(-pow(diskY / diskWidth, 2.0));
-    float diskFade = exp(-pow(p_rot.x / 0.35, 2.0)); // Continuous exponential decay profile
-    
-    // Sharp concentric gas filaments for the front disk
-    float diskFilaments = sin(diskY * 180.0) * 0.45 + 0.55;
-    float diskGlow = diskIntensity * diskFade * mix(0.3, 1.0, diskFilaments) * noiseVal * doppler;
-
-    // Combine intensities
-    float accum = photonGlow + ringGlow + diskGlow;
-
-    // 5. Background Starfield with gravitational lensing warp
-    vec2 starP = p;
-    if (d > 0.085) {
-      starP = p * (1.0 + 0.0035 / (d - 0.083));
-    }
-    float stars = step(0.9972, hash(floor(starP * 240.0))) * 0.15;
-    stars += step(0.9993, hash(floor(starP * 380.0 + vec2(42.0, 79.0)))) * 0.35;
-    vec3 starColor = vec3(0.9, 0.93, 1.0) * stars;
-
-    // Resolve color of each component
-    float r_eff_ring = abs(r_lens) * 26.0 + 2.6;
-    vec3 colorRing = getTemperatureColor(r_eff_ring);
-    
-    vec3 colorPhoton = getTemperatureColor(2.6); // Hot white-yellow core
-    
-    float r_eff_disk = abs(p_rot.x) * 12.0 + 2.6;
-    vec3 colorDisk = getTemperatureColor(r_eff_disk);
-
-    // Blend components based on relative intensity
     vec3 color = vec3(0.0);
-    color += colorPhoton * photonGlow;
-    color += colorRing * ringGlow;
-    color += colorDisk * diskGlow;
+    float alpha = 0.0;
+    bool hitHorizon = false;
 
-    if (accum > 0.001) {
-      color /= accum;
+    // ── Photon geodesic state ──────────────────────────────────────
+    // Integrate the Schwarzschild null geodesic so light bends strongly
+    // near the hole, wrapping the far side of the disk up and over the
+    // shadow (the defining Gargantua lensing halo).
+    vec3 pos = ro;
+    vec3 vel = rd;
+    // Conserved angular momentum (per unit) squared — drives the bending term
+    vec3 angMom = cross(pos, vel);
+    float h2 = dot(angMom, angMom);
+
+    // Dither start position slightly to break up banding
+    float dither = hash(gridCoords);
+    pos += vel * dither * 0.18;
+
+    vec3 dir = vel;
+
+    const int steps = 220;
+    const float dt = 0.16;
+
+    for (int i = 0; i < steps; i++) {
+      float r2 = dot(pos, pos);
+      float r = sqrt(r2);
+
+      // Event horizon capture
+      if (r < Rs * 1.02) {
+        hitHorizon = true;
+        break;
+      }
+      // Escaped to infinity — stop tracing
+      if (r > 22.0 && dot(pos, vel) > 0.0) break;
+
+      // Advance the geodesic (leapfrog-ish): step position, then bend velocity.
+      vec3 prevPos = pos;
+      pos += vel * dt;
+      // Schwarzschild photon deflection toward the singularity
+      vec3 accel = -1.5 * h2 * pos / pow(dot(pos, pos), 2.5);
+      vel += accel * dt;
+
+      // ── Disk-plane crossing test ─────────────────────────────────
+      // Detect where the ray crosses the equatorial plane (y = 0) and
+      // sample the infinitely-thin disk exactly there. A single ray may
+      // cross multiple times — front face, then the lensed far face.
+      if (prevPos.y * pos.y < 0.0) {
+        float frac = prevPos.y / (prevPos.y - pos.y);
+        vec3 hit = mix(prevPos, pos, frac);
+        float d_xz = length(hit.xz);
+
+        if (d_xz >= r_in && d_xz <= r_out) {
+          dir = normalize(vel);
+
+          // Keplerian rotation
+          float speed = u_time * u_speed * 1.5 / (sqrt(d_xz) + 0.1);
+          float cosA = cos(speed);
+          float sinA = sin(speed);
+          vec2 pr = vec2(hit.x * cosA - hit.z * sinA, hit.x * sinA + hit.z * cosA);
+
+          // Turbulent gas
+          float swirl = fbm(pr * 1.4 + vec2(0.0, d_xz * 0.8));
+          float fine = fbm(pr * 4.0);
+
+          // Smooth radial brightness falloff (hot inner, dim outer)
+          float radial = exp(-0.42 * (d_xz - r_in));
+          // Soft inner & outer edge fade
+          float edge = smoothstep(r_in, r_in + 0.6, d_xz) * (1.0 - smoothstep(r_out - 2.0, r_out, d_xz));
+
+          float local_val = (0.35 + 0.95 * swirl) * (0.6 + 0.4 * fine) * (0.3 + 1.7 * radial) * edge;
+
+          // Doppler beaming — orbital direction at the hit point
+          vec3 rot_dir = normalize(vec3(-hit.z, 0.0, hit.x));
+          float doppler = 1.0 + 1.8 * dot(dir, rot_dir) * (0.45 / sqrt(d_xz));
+          doppler = clamp(doppler, 0.05, 4.5);
+          local_val *= doppler;
+
+          // Temperature color
+          float r_eff = 2.6 + (d_xz - r_in) * 1.1;
+          vec3 stepColor = getTemperatureColor(r_eff);
+          // Hot-white on the approaching side, dark red on the receding side
+          stepColor = mix(stepColor, vec3(1.25, 1.18, 1.05), clamp((doppler - 1.0) * 0.5, 0.0, 1.0));
+          stepColor = mix(stepColor, vec3(0.42, 0.05, 0.01), clamp((1.0 - doppler) * 0.9, 0.0, 1.0));
+
+          // Composite this disk crossing over what's accumulated so far
+          float a = clamp(local_val * 0.9, 0.0, 1.0);
+          color += (1.0 - alpha) * stepColor * local_val * 1.5;
+          alpha += (1.0 - alpha) * a;
+
+          if (alpha > 0.99) { alpha = 1.0; break; }
+        }
+      }
     }
 
-    // Boost brightness and apply u_brightness control
-    float finalGlow = accum * u_brightness * 1.6;
-
-    // Add starfield
-    if (d > 0.09) {
-      float starMask = (1.0 - clamp(finalGlow * 1.8, 0.0, 1.0));
-      color += starColor * starMask * horizonMask;
-      finalGlow += stars * starMask * horizonMask;
+    // 4. Background Starfield with gravitational lensing deflection
+    if (!hitHorizon) {
+      vec3 starDir = normalize(vel);
+      float starIntensity = step(0.9968, hash(floor(starDir.xy * 240.0))) * 0.15;
+      starIntensity += step(0.9991, hash(floor(starDir.xz * 360.0 + vec2(42.0, 79.0)))) * 0.45;
+      vec3 starColor = vec3(0.9, 0.93, 1.0) * starIntensity;
+      
+      // Add stars, masked by accretion disk alpha
+      color += (1.0 - alpha) * starColor;
+      alpha += (1.0 - alpha) * starIntensity;
     }
 
+    // Apply brightness control
+    float finalGlow = alpha * u_brightness * 1.5;
     float val = clamp(finalGlow, 0.0, 1.0);
 
     // ─── ASCII character lookup ─────────────────────────────
@@ -191,7 +235,6 @@ const FRAGMENT_SHADER = `
     gl_FragColor = vec4(mix(u_color_bg, color, charIntensity), 1.0);
   }
 `;
-
 
 const hexToRgb = (hex: string): [number, number, number] => {
   const cleanHex = hex.replace('#', '');
@@ -240,10 +283,15 @@ export function BlackholeShader({
   const timeRef = useRef(0);
 
   const [localScreensaver, setLocalScreensaver] = useState(false);
-  const isScreensaver = isParentScreensaver !== undefined ? isParentScreensaver : localScreensaver;
-  const setIsScreensaver = onExitParentScreensaver !== undefined ? (val: boolean) => {
-    if (!val) onExitParentScreensaver();
-  } : setLocalScreensaver;
+  const isScreensaver =
+    isParentScreensaver !== undefined ? isParentScreensaver : localScreensaver;
+  const setIsScreensaver = useMemo(() => {
+    return onExitParentScreensaver !== undefined
+      ? (val: boolean) => {
+          if (!val) onExitParentScreensaver();
+        }
+      : setLocalScreensaver;
+  }, [onExitParentScreensaver]);
 
   // Exit screensaver on keypress or click
   useEffect(() => {
@@ -263,7 +311,7 @@ export function BlackholeShader({
   const charHeightRef = useRef(charHeight);
   const speedRef = useRef(speed);
   const brightnessRef = useRef(brightness);
-  
+
   const colorModeRef = useRef(colorMode);
   const colorSolidRef = useRef(hexToRgb(colorSolid));
   const colorGradStartRef = useRef(hexToRgb(colorGradStart));
@@ -276,48 +324,69 @@ export function BlackholeShader({
     charHeightRef.current = charHeight;
     speedRef.current = speed;
     brightnessRef.current = brightness;
-    
+
     colorModeRef.current = colorMode;
     colorSolidRef.current = hexToRgb(colorSolid);
     colorGradStartRef.current = hexToRgb(colorGradStart);
     colorGradEndRef.current = hexToRgb(colorGradEnd);
     colorBgRef.current = hexToRgb(colorBg);
-  }, [chars, charWidth, charHeight, speed, brightness, colorMode, colorSolid, colorGradStart, colorGradEnd, colorBg]);
+  }, [
+    chars,
+    charWidth,
+    charHeight,
+    speed,
+    brightness,
+    colorMode,
+    colorSolid,
+    colorGradStart,
+    colorGradEnd,
+    colorBg,
+  ]);
 
   // Build the font atlas texture
-  const buildFontAtlas = useCallback((gl: WebGLRenderingContext, charsList: string, w: number, h: number) => {
-    if (fontAtlasTextureRef.current) {
-      gl.deleteTexture(fontAtlasTextureRef.current);
-    }
+  const buildFontAtlas = useCallback(
+    (gl: WebGLRenderingContext, charsList: string, w: number, h: number) => {
+      if (fontAtlasTextureRef.current) {
+        gl.deleteTexture(fontAtlasTextureRef.current);
+      }
 
-    const atlasCanvas = document.createElement('canvas');
-    const ctx = atlasCanvas.getContext('2d');
-    if (!ctx) return;
+      const atlasCanvas = document.createElement('canvas');
+      const ctx = atlasCanvas.getContext('2d');
+      if (!ctx) return;
 
-    atlasCanvas.width = w * charsList.length;
-    atlasCanvas.height = h;
+      atlasCanvas.width = w * charsList.length;
+      atlasCanvas.height = h;
 
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, atlasCanvas.width, atlasCanvas.height);
-    ctx.fillStyle = 'white';
-    ctx.font = `bold ${h - 2}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, atlasCanvas.width, atlasCanvas.height);
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${h - 2}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
 
-    for (let i = 0; i < charsList.length; i++) {
-      ctx.fillText(charsList[i], i * w + w / 2, h / 2);
-    }
+      for (let i = 0; i < charsList.length; i++) {
+        ctx.fillText(charsList[i], i * w + w / 2, h / 2);
+      }
 
-    const texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, gl.LUMINANCE, gl.UNSIGNED_BYTE, atlasCanvas);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      const texture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.LUMINANCE,
+        gl.LUMINANCE,
+        gl.UNSIGNED_BYTE,
+        atlasCanvas,
+      );
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    fontAtlasTextureRef.current = texture;
-  }, []);
+      fontAtlasTextureRef.current = texture;
+    },
+    [],
+  );
 
   // Update Font Atlas on prop change
   useEffect(() => {
@@ -371,8 +440,7 @@ export function BlackholeShader({
 
     // Full-screen quad
     const vertices = new Float32Array([
-      -1, -1,  1, -1,  -1, 1,
-      -1,  1,  1, -1,   1, 1,
+      -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
     ]);
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
@@ -383,7 +451,12 @@ export function BlackholeShader({
     gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
     // Initial Font atlas load
-    buildFontAtlas(gl, charsRef.current, charWidthRef.current, charHeightRef.current);
+    buildFontAtlas(
+      gl,
+      charsRef.current,
+      charWidthRef.current,
+      charHeightRef.current,
+    );
 
     // Resize observer
     const resizeObserver = new ResizeObserver(() => {
@@ -413,18 +486,47 @@ export function BlackholeShader({
       gl.useProgram(program);
 
       // Uniforms
-      gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), canvas.width, canvas.height);
+      gl.uniform2f(
+        gl.getUniformLocation(program, 'u_resolution'),
+        canvas.width,
+        canvas.height,
+      );
       gl.uniform1f(gl.getUniformLocation(program, 'u_time'), timeRef.current);
-      gl.uniform2f(gl.getUniformLocation(program, 'u_grid_size'), charWidthRef.current, charHeightRef.current);
-      gl.uniform1f(gl.getUniformLocation(program, 'u_char_count'), charsRef.current.length);
+      gl.uniform2f(
+        gl.getUniformLocation(program, 'u_grid_size'),
+        charWidthRef.current,
+        charHeightRef.current,
+      );
+      gl.uniform1f(
+        gl.getUniformLocation(program, 'u_char_count'),
+        charsRef.current.length,
+      );
       gl.uniform1f(gl.getUniformLocation(program, 'u_speed'), speedRef.current);
-      gl.uniform1f(gl.getUniformLocation(program, 'u_brightness'), brightnessRef.current);
+      gl.uniform1f(
+        gl.getUniformLocation(program, 'u_brightness'),
+        brightnessRef.current,
+      );
 
-      gl.uniform1i(gl.getUniformLocation(program, 'u_color_mode'), colorModeRef.current);
-      gl.uniform3fv(gl.getUniformLocation(program, 'u_color_solid'), colorSolidRef.current);
-      gl.uniform3fv(gl.getUniformLocation(program, 'u_color_grad_start'), colorGradStartRef.current);
-      gl.uniform3fv(gl.getUniformLocation(program, 'u_color_grad_end'), colorGradEndRef.current);
-      gl.uniform3fv(gl.getUniformLocation(program, 'u_color_bg'), colorBgRef.current);
+      gl.uniform1i(
+        gl.getUniformLocation(program, 'u_color_mode'),
+        colorModeRef.current,
+      );
+      gl.uniform3fv(
+        gl.getUniformLocation(program, 'u_color_solid'),
+        colorSolidRef.current,
+      );
+      gl.uniform3fv(
+        gl.getUniformLocation(program, 'u_color_grad_start'),
+        colorGradStartRef.current,
+      );
+      gl.uniform3fv(
+        gl.getUniformLocation(program, 'u_color_grad_end'),
+        colorGradEndRef.current,
+      );
+      gl.uniform3fv(
+        gl.getUniformLocation(program, 'u_color_bg'),
+        colorBgRef.current,
+      );
 
       // Bind font atlas
       if (fontAtlasTextureRef.current) {
@@ -441,8 +543,10 @@ export function BlackholeShader({
 
     return () => {
       resizeObserver.disconnect();
-      if (animationFrameIdRef.current) cancelAnimationFrame(animationFrameIdRef.current);
-      if (fontAtlasTextureRef.current) gl.deleteTexture(fontAtlasTextureRef.current);
+      if (animationFrameIdRef.current)
+        cancelAnimationFrame(animationFrameIdRef.current);
+      if (fontAtlasTextureRef.current)
+        gl.deleteTexture(fontAtlasTextureRef.current);
       gl.deleteProgram(program);
       gl.deleteShader(vs);
       gl.deleteShader(fs);
@@ -453,7 +557,9 @@ export function BlackholeShader({
   return (
     <div className="flex flex-col w-full h-full">
       {/* CRT scanline styling */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         .blackhole-crt::after {
           content: " ";
           display: block;
@@ -475,11 +581,11 @@ export function BlackholeShader({
           z-index: 5;
           pointer-events: none;
         }
-      `}} />
+      `,
+        }}
+      />
 
-      <div
-        className="w-full h-full relative"
-      >
+      <div className="w-full h-full relative">
         {/* Floating label */}
         {!isScreensaver && isParentScreensaver === undefined && (
           <div className="absolute top-4 left-4 z-20 bg-black/60 backdrop-blur-md border border-amber-900/30 text-[10px] px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg select-none font-bold uppercase tracking-wider text-amber-400/80">
@@ -511,11 +617,10 @@ export function BlackholeShader({
           </div>
         )}
 
-        <div className={`w-full h-full relative blackhole-vignette ${crt ? 'blackhole-crt' : ''}`}>
-          <canvas
-            ref={canvasRef}
-            className="w-full h-full block"
-          />
+        <div
+          className={`w-full h-full relative blackhole-vignette ${crt ? 'blackhole-crt' : ''}`}
+        >
+          <canvas ref={canvasRef} className="w-full h-full block" />
         </div>
       </div>
     </div>

@@ -713,8 +713,9 @@ export function AsciiShader() {
       gl.deleteShader(vs);
       gl.deleteShader(fs);
       gl.deleteBuffer(buffer);
+      glRef.current = null;
     };
-  }, [rebuildFontAtlas]);
+  }, [rebuildFontAtlas, mode]);
 
   // Re-build atlas canvas whenever chars or size changes
   useEffect(() => {
