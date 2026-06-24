@@ -90,16 +90,24 @@ const FRAGMENT_SHADER = `
     // Radius from center
     float d = length(p);
 
+    // Rotate coordinates for the tilted accretion disk (approx. 7 degrees)
+    float angle = 0.12;
+    float cosA = cos(angle);
+    float sinA = sin(angle);
+    vec2 p_rot = vec2(p.x * cosA - p.y * sinA, p.x * sinA + p.y * cosA);
+
     // 1. Event Horizon Mask (Shadow)
-    float horizonMask = smoothstep(0.082, 0.096, d);
+    float horizonMask = smoothstep(0.084, 0.092, d);
 
     // 2. Photon Ring (right at the edge of event horizon)
-    float photonGlow = exp(-pow((d - 0.092) / 0.0025, 2.0)) * 0.9 * horizonMask;
-    // Doppler beaming on photon ring
-    photonGlow *= (1.0 - 0.45 * (p.x / (d + 0.001)));
+    float photonGlow = exp(-pow((d - 0.092) / 0.0022, 2.0)) * 0.9 * horizonMask;
+    photonGlow *= mix(0.7, 1.3, fbm(p * 20.0)); // subtle turbulence
+    photonGlow *= (1.0 - 0.45 * (p.x / (d + 0.001))); // Doppler beaming
 
     // 3. Lensed Halo (Einstein Lensing Ray-Deflection Approximation)
-    float r_lens = d - (0.018 / max(d, 0.001));
+    // Stretch vertically in distance space to get a tilted lensed ring (elliptical)
+    float d_ring = length(vec2(p.x, p.y / 0.85));
+    float r_lens = d_ring - (0.018 / max(d_ring, 0.001));
     float ringIntensity = exp(-pow((r_lens - 0.145) / 0.042, 2.0));
     
     // Polar swirl noise with differential velocity profile
@@ -108,16 +116,26 @@ const FRAGMENT_SHADER = `
     float swirlNoise = fbm(vec2(d * 12.0, theta - speed_profile));
     float noiseVal = mix(0.35, 1.65, swirlNoise);
 
+    // Sharp concentric gas filaments for the lensed ring
+    float ringFilaments = sin(r_lens * 160.0) * 0.45 + 0.55;
+    
     // Doppler beaming (brighter on the left side)
     float doppler = 1.0 - 0.55 * (p.x / (d + 0.001));
-    float ringGlow = ringIntensity * noiseVal * doppler * horizonMask;
+    float ringGlow = ringIntensity * mix(0.3, 1.0, ringFilaments) * noiseVal * doppler * horizonMask;
 
     // 4. Front Accretion Disk (straight horizontal band crossing in front of horizon)
+    // Add gravitational lensing curve (downward bend) in front of the black hole
+    float bend = 0.008 * exp(-pow(p_rot.x / 0.12, 2.0));
+    float diskY = p_rot.y + bend;
+
     // Width flares out at the sides, very thin across the middle
-    float diskWidth = 0.012 + 0.045 * abs(p.x);
-    float diskIntensity = exp(-pow(p.y / diskWidth, 2.0));
-    float diskFade = exp(-pow(p.x / 0.35, 2.0)); // Continuous exponential decay profile
-    float diskGlow = diskIntensity * diskFade * noiseVal * doppler;
+    float diskWidth = 0.012 + 0.045 * abs(p_rot.x);
+    float diskIntensity = exp(-pow(diskY / diskWidth, 2.0));
+    float diskFade = exp(-pow(p_rot.x / 0.35, 2.0)); // Continuous exponential decay profile
+    
+    // Sharp concentric gas filaments for the front disk
+    float diskFilaments = sin(diskY * 180.0) * 0.45 + 0.55;
+    float diskGlow = diskIntensity * diskFade * mix(0.3, 1.0, diskFilaments) * noiseVal * doppler;
 
     // Combine intensities
     float accum = photonGlow + ringGlow + diskGlow;
@@ -137,7 +155,7 @@ const FRAGMENT_SHADER = `
     
     vec3 colorPhoton = getTemperatureColor(2.6); // Hot white-yellow core
     
-    float r_eff_disk = abs(p.x) * 12.0 + 2.6;
+    float r_eff_disk = abs(p_rot.x) * 12.0 + 2.6;
     vec3 colorDisk = getTemperatureColor(r_eff_disk);
 
     // Blend components based on relative intensity
