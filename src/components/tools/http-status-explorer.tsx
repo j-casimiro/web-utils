@@ -93,7 +93,7 @@ export function HttpStatusExplorer() {
   }, [search, selectedCategory]);
 
   return (
-    <div className="flex flex-col h-[650px] bg-card text-card-foreground border border-border shadow-sm rounded-xl overflow-hidden">
+    <div className="flex flex-col h-162.5 bg-card text-card-foreground border border-border shadow-sm rounded-xl overflow-hidden">
       
       {/* Top Filter Bar */}
       <div className="p-4 border-b border-border bg-muted/20 space-y-4 shrink-0">
@@ -138,7 +138,7 @@ export function HttpStatusExplorer() {
       <div className="flex flex-1 overflow-hidden">
         
         {/* Left Sidebar: List */}
-        <div className="w-1/3 min-w-[200px] max-w-[280px] border-r border-border overflow-y-auto bg-muted/10">
+        <div className="w-1/3 min-w-50 max-w-70 border-r border-border overflow-y-auto bg-muted/10">
           {filteredCodes.length > 0 ? (
             <div className="p-2 space-y-1">
               {filteredCodes.map(code => (

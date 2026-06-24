@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Calendar, Play, Settings, AlertCircle, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -262,12 +262,9 @@ function getNextRuns(parsed: ParsedCron, limit = 5): Date[] {
     const dom = current.getDate();
     const dow = current.getDay();
     
-    let dayMatches = false;
-    if (parsed.isDomRestricted && parsed.isDowRestricted) {
-      dayMatches = parsed.daysOfMonth.has(dom) || parsed.daysOfWeek.has(dow);
-    } else {
-      dayMatches = parsed.daysOfMonth.has(dom) && parsed.daysOfWeek.has(dow);
-    }
+    const dayMatches = parsed.isDomRestricted && parsed.isDowRestricted
+      ? (parsed.daysOfMonth.has(dom) || parsed.daysOfWeek.has(dow))
+      : (parsed.daysOfMonth.has(dom) && parsed.daysOfWeek.has(dow));
 
     if (!dayMatches) {
       current.setHours(0, 0, 0);
@@ -328,23 +325,54 @@ export function CronBuilder() {
   const [dowMode, setDowMode] = useState<'every' | 'specific'>('every');
   const [selectedDows, setSelectedDows] = useState<number[]>([]);
 
-  // Synchronize preset states to formatted string
-  useEffect(() => {
-    if (builderMode !== 'preset') return;
-
-    if (presetFrequency === 'minute') {
+  const updateCronFromPreset = (
+    freq: typeof presetFrequency,
+    min: number,
+    hour: number,
+    days: number[],
+    dom: number
+  ) => {
+    if (freq === 'minute') {
       setCronInput('* * * * *');
-    } else if (presetFrequency === 'hourly') {
-      setCronInput(`${presetMinute} * * * *`);
-    } else if (presetFrequency === 'daily') {
-      setCronInput(`${presetMinute} ${presetHour} * * *`);
-    } else if (presetFrequency === 'weekly') {
-      const days = presetDays.length > 0 ? [...presetDays].sort((a, b) => a - b).join(',') : '*';
-      setCronInput(`${presetMinute} ${presetHour} * * ${days}`);
-    } else if (presetFrequency === 'monthly') {
-      setCronInput(`${presetMinute} ${presetHour} ${presetDom} * *`);
+    } else if (freq === 'hourly') {
+      setCronInput(`${min} * * * *`);
+    } else if (freq === 'daily') {
+      setCronInput(`${min} ${hour} * * *`);
+    } else if (freq === 'weekly') {
+      const sortedDays = days.length > 0 ? [...days].sort((a, b) => a - b).join(',') : '*';
+      setCronInput(`${min} ${hour} * * ${sortedDays}`);
+    } else if (freq === 'monthly') {
+      setCronInput(`${min} ${hour} ${dom} * *`);
     }
-  }, [builderMode, presetFrequency, presetMinute, presetHour, presetDays, presetDom]);
+  };
+
+  const handleSetPresetFrequency = (freq: typeof presetFrequency) => {
+    setPresetFrequency(freq);
+    updateCronFromPreset(freq, presetMinute, presetHour, presetDays, presetDom);
+  };
+
+  const handleSetPresetMinute = (min: number) => {
+    setPresetMinute(min);
+    updateCronFromPreset(presetFrequency, min, presetHour, presetDays, presetDom);
+  };
+
+  const handleSetPresetHour = (hour: number) => {
+    setPresetHour(hour);
+    updateCronFromPreset(presetFrequency, presetMinute, hour, presetDays, presetDom);
+  };
+
+  const handleTogglePresetDay = (day: number) => {
+    const nextDays = presetDays.includes(day)
+      ? presetDays.filter((d) => d !== day)
+      : [...presetDays, day];
+    setPresetDays(nextDays);
+    updateCronFromPreset(presetFrequency, presetMinute, presetHour, nextDays, presetDom);
+  };
+
+  const handleSetPresetDom = (dom: number) => {
+    setPresetDom(dom);
+    updateCronFromPreset(presetFrequency, presetMinute, presetHour, presetDays, dom);
+  };
 
   // Synchronize generator states to formatted string
   const applyGenerator = () => {
@@ -413,7 +441,7 @@ export function CronBuilder() {
                   variant="outline"
                   size="sm"
                   onClick={copyToClipboard}
-                  className="w-[84px] border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground h-8 text-xs font-mono flex items-center justify-center"
+                  className="w-21 border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground h-8 text-xs font-mono flex items-center justify-center"
                 >
                 {copied ? (
                   <>
@@ -465,7 +493,10 @@ export function CronBuilder() {
           </div>
           <div className="flex items-center bg-muted/50 border border-border rounded-lg p-0.5">
             <button
-              onClick={() => setBuilderMode('preset')}
+              onClick={() => {
+                setBuilderMode('preset');
+                updateCronFromPreset(presetFrequency, presetMinute, presetHour, presetDays, presetDom);
+              }}
               className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                 builderMode === 'preset'
                   ? 'bg-card text-foreground shadow-sm border border-border/50'
@@ -488,7 +519,7 @@ export function CronBuilder() {
         </div>
 
         {builderMode === 'preset' ? (
-          <div className="space-y-6 min-h-[160px] flex flex-col justify-center">
+          <div className="space-y-6 min-h-40 flex flex-col justify-center">
             <div className="flex flex-wrap gap-2">
               {([
                 { id: 'minute', label: 'Every Minute' },
@@ -499,7 +530,7 @@ export function CronBuilder() {
               ] as const).map((freq) => (
                 <button
                   key={freq.id}
-                  onClick={() => setPresetFrequency(freq.id)}
+                  onClick={() => handleSetPresetFrequency(freq.id)}
                   className={`px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${
                     presetFrequency === freq.id
                       ? 'bg-primary/10 border-primary text-primary shadow-sm'
@@ -524,7 +555,7 @@ export function CronBuilder() {
                   <select 
                     className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     value={presetMinute}
-                    onChange={(e) => setPresetMinute(parseInt(e.target.value))}
+                    onChange={(e) => handleSetPresetMinute(parseInt(e.target.value))}
                   >
                     {Array.from({ length: 60 }).map((_, i) => (
                       <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
@@ -539,7 +570,7 @@ export function CronBuilder() {
                     <select 
                       className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       value={presetHour}
-                      onChange={(e) => setPresetHour(parseInt(e.target.value))}
+                      onChange={(e) => handleSetPresetHour(parseInt(e.target.value))}
                     >
                       {Array.from({ length: 24 }).map((_, i) => (
                         <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
@@ -549,7 +580,7 @@ export function CronBuilder() {
                     <select 
                       className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       value={presetMinute}
-                      onChange={(e) => setPresetMinute(parseInt(e.target.value))}
+                      onChange={(e) => handleSetPresetMinute(parseInt(e.target.value))}
                     >
                       {Array.from({ length: 60 }).map((_, i) => (
                         <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
@@ -566,7 +597,7 @@ export function CronBuilder() {
                       {WEEKDAY_NAMES.map((day, i) => (
                         <button
                           key={i}
-                          onClick={() => toggleSelection(presetDays, setPresetDays, i)}
+                          onClick={() => handleTogglePresetDay(i)}
                           className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-colors shadow-sm ${
                             presetDays.includes(i)
                               ? 'bg-primary text-primary-foreground border-primary'
@@ -584,7 +615,7 @@ export function CronBuilder() {
                       <select 
                         className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         value={presetHour}
-                        onChange={(e) => setPresetHour(parseInt(e.target.value))}
+                        onChange={(e) => handleSetPresetHour(parseInt(e.target.value))}
                       >
                         {Array.from({ length: 24 }).map((_, i) => (
                           <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
@@ -594,7 +625,7 @@ export function CronBuilder() {
                       <select 
                         className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         value={presetMinute}
-                        onChange={(e) => setPresetMinute(parseInt(e.target.value))}
+                        onChange={(e) => handleSetPresetMinute(parseInt(e.target.value))}
                       >
                         {Array.from({ length: 60 }).map((_, i) => (
                           <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
@@ -612,7 +643,7 @@ export function CronBuilder() {
                       <select 
                         className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         value={presetDom}
-                        onChange={(e) => setPresetDom(parseInt(e.target.value))}
+                        onChange={(e) => handleSetPresetDom(parseInt(e.target.value))}
                       >
                         {Array.from({ length: 31 }).map((_, i) => {
                           const val = i + 1;
@@ -632,7 +663,7 @@ export function CronBuilder() {
                       <select 
                         className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         value={presetHour}
-                        onChange={(e) => setPresetHour(parseInt(e.target.value))}
+                        onChange={(e) => handleSetPresetHour(parseInt(e.target.value))}
                       >
                         {Array.from({ length: 24 }).map((_, i) => (
                           <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
@@ -642,7 +673,7 @@ export function CronBuilder() {
                       <select 
                         className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm font-mono shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                         value={presetMinute}
-                        onChange={(e) => setPresetMinute(parseInt(e.target.value))}
+                        onChange={(e) => handleSetPresetMinute(parseInt(e.target.value))}
                       >
                         {Array.from({ length: 60 }).map((_, i) => (
                           <option key={i} value={i}>{String(i).padStart(2, '0')}</option>
@@ -668,7 +699,7 @@ export function CronBuilder() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 min-w-[80px] py-1 text-center text-xs font-semibold rounded select-none ${
+              className={`flex-1 min-w-20 py-1 text-center text-xs font-semibold rounded select-none ${
                 activeTab === tab.id
                   ? 'bg-card text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-border'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors'
@@ -680,7 +711,7 @@ export function CronBuilder() {
         </div>
 
         {/* Tab Contents */}
-        <div className="bg-background border border-border p-4 rounded-lg min-h-[160px] flex flex-col justify-between">
+        <div className="bg-background border border-border p-4 rounded-lg min-h-40 flex flex-col justify-between">
           <div className="space-y-4 flex-1">
             {/* MINUTES TAB */}
             {activeTab === 'minutes' && (

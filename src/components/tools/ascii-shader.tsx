@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Sparkles, Terminal, Copy, Check, Download, Upload, Sliders, Monitor } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -210,32 +210,65 @@ const FRAGMENT_SHADER_SOURCE = `
     float cosA = cos(-0.6);
     float sinA = sin(-0.6);
     mat2 rot = mat2(cosA, -sinA, sinA, cosA);
-    p = rot * p;
+    vec2 p_rot = rot * p;
     
-    // Inclination compression (3D tilt effect)
-    p.y /= 0.32; 
+    // 1. Volumetric Spherical Core Radius (calculated from uncompressed coordinates)
+    float r_core = length(p_rot) * (u_scale / 3.5);
     
-    float r = length(p);
-    distFromCenter = r; // Pass back to main for coloring
+    // 2. Flat Disk Coordinates (inclination compression applied)
+    vec2 p_disk = p_rot;
+    p_disk.y /= 0.32; 
+    p_disk *= (u_scale / 3.5);
     
-    float theta = atan(p.y, p.x);
+    float r_disk = length(p_disk);
+    distFromCenter = r_disk; // Pass back to main for coloring
     
-    // Central bulge (glow)
-    float core = exp(-r * 9.0) * 1.5;
+    float rc = max(r_core, 0.001);
+    float rd = max(r_disk, 0.001);
+    float theta = atan(p_disk.y, p_disk.x);
     
-    // Spiral arms
-    float armsVal = sin(theta * 2.0 - r * 6.5 + time * 1.2);
-    armsVal = pow(max(0.0, armsVal), 3.0);
-    float arms = armsVal * exp(-r * 1.8) * 0.9;
+    // 3. Slow Pace & Motion with Differential Rotation
+    float localTime = time * 0.35;
+    float diffRotation = localTime * (0.15 / (rd + 0.08));
     
-    // Star grain / speckles (make it look like individual stars)
-    float stars = hash(floor(p * 200.0)) * 0.22 * exp(-r * 1.5);
+    // 4. Continuous Logarithmic Spiral Winding
+    float winding = -2.2 * log(rd + 0.02);
     
-    // Larger cluster noise
-    float clusters = noise(p * 15.0 + time * 0.15) * 0.15 * exp(-r * 2.2);
+    // 5. Multiple Spiral Arms (Wings)
+    float num_arms = 2.0; // Set default to 2 or 4 distinct arms
+    float minArmDist = 1.0e9;
     
-    float val = core + arms + stars + clusters;
-    val += exp(-r * 2.0) * 0.12; // Outer glow
+    for (int i = 0; i < 4; i++) {
+      if (float(i) >= num_arms) break;
+      float arm_offset = (2.0 * 3.14159265 / num_arms) * float(i);
+      
+      // Clean logarithmic spiral arm formula
+      float armTheta = arm_offset + winding + diffRotation;
+      float dTheta = theta - armTheta;
+      
+      // Normalize angle difference to [-PI, PI]
+      dTheta = atan(sin(dTheta), cos(dTheta));
+      minArmDist = min(minArmDist, abs(dTheta));
+    }
+    
+    // Compute arm intensity with smooth Gaussian-like width
+    float armsVal = exp(-minArmDist * minArmDist * 8.0);
+    float arms = armsVal * exp(-rd * 1.3) * 0.85;
+    
+    // 6. Volumetric, Spherical Core with smooth exponential falloff
+    float core = exp(-rc * 7.5) * 1.8 + exp(-rc * 2.5) * 0.3;
+    
+    // 7. Inter-arm Ambient Density (Scatter/Noise)
+    // Faint stars and clumpy dust scattered in and near the arms
+    float wideArmsVal = exp(-minArmDist * minArmDist * 1.8);
+    float dust = wideArmsVal * noise(p_disk * 25.0) * 0.28 * exp(-rd * 1.0);
+    
+    // Distant stellar dust and ambient star fields at much lower density/brightness
+    float ambientDust = (noise(p_disk * 12.0) * 0.12 + hash(floor(p_disk * 120.0)) * 0.08) * exp(-rd * 0.8);
+    
+    // Add all components together
+    float val = core + arms + dust + ambientDust;
+    val += exp(-rd * 1.8) * 0.08; // Subtle outer halo glow
     
     return clamp(val, 0.0, 1.0);
   }
@@ -371,8 +404,36 @@ export function AsciiShader() {
   const mousePosRef = useRef({ x: -10, y: -10 }); // Offscreen default
   const timeRef = useRef(0);
 
+  // Config refs for mount-only WebGL render loop to prevent time jumps and re-compilations
+  const modeRef = useRef(mode);
+  const scaleRef = useRef(scale);
+  const speedRef = useRef(speed);
+  const brightnessRef = useRef(brightness);
+  const themeRef = useRef(activeTheme);
+  const useImageColorRef = useRef(useImageColor);
+  const charsLengthRef = useRef(chars.length);
+  const charWidthRef = useRef(charWidth);
+  const charHeightRef = useRef(charHeight);
+
+  const charsRef = useRef(chars);
+
+  // Keep refs in sync with state in a useEffect to avoid render-phase ref mutations
+  useEffect(() => {
+    modeRef.current = mode;
+    scaleRef.current = scale;
+    speedRef.current = speed;
+    brightnessRef.current = brightness;
+    themeRef.current = activeTheme;
+    useImageColorRef.current = useImageColor;
+    charsLengthRef.current = chars.length;
+    charWidthRef.current = charWidth;
+    charHeightRef.current = charHeight;
+    charsRef.current = chars;
+  }, [mode, scale, speed, brightness, activeTheme, useImageColor, chars, charWidth, charHeight]);
+
   // Apply preset
   const applyPreset = (preset: Preset) => {
+    timeRef.current = 0; // Reset animation time for a clean start
     setMode(preset.mode);
     setChars(preset.chars);
     setCharWidth(preset.charWidth);
@@ -385,7 +446,7 @@ export function AsciiShader() {
   };
 
   // Build Font Atlas Canvas and upload as texture
-  const rebuildFontAtlas = (gl: WebGLRenderingContext, charsList: string, w: number, h: number) => {
+  const rebuildFontAtlas = useCallback((gl: WebGLRenderingContext, charsList: string, w: number, h: number) => {
     if (fontAtlasTextureRef.current) {
       gl.deleteTexture(fontAtlasTextureRef.current);
     }
@@ -417,7 +478,7 @@ export function AsciiShader() {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
     fontAtlasTextureRef.current = texture;
-  };
+  }, []);
 
   // Image Upload helper
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -516,8 +577,8 @@ export function AsciiShader() {
     gl.enableVertexAttribArray(positionLoc);
     gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
 
-    // Initial Font Atlas
-    rebuildFontAtlas(gl, chars, charWidth, charHeight);
+    // Initial Font Atlas (read from refs to satisfy mount-only rules)
+    rebuildFontAtlas(gl, charsRef.current, charWidthRef.current, charHeightRef.current);
 
     // Set up Resize Observer
     const resizeObserver = new ResizeObserver(() => {
@@ -533,9 +594,19 @@ export function AsciiShader() {
     let lastTime = 0;
     // Animation loop
     const render = (now: number) => {
+      // Avoid time jump on the first frames after mounting or resetting
+      if (lastTime === 0) {
+        lastTime = now;
+        animationFrameIdRef.current = requestAnimationFrame(render);
+        return;
+      }
       const dt = (now - lastTime) * 0.001;
       lastTime = now;
       timeRef.current += dt;
+
+      // Clear the canvas cleanly before drawing the new frame from scratch
+      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
 
       gl.useProgram(program);
 
@@ -547,37 +618,37 @@ export function AsciiShader() {
       gl.uniform1f(uTime, timeRef.current);
 
       const uGridSize = gl.getUniformLocation(program, 'u_grid_size');
-      gl.uniform2f(uGridSize, charWidth, charHeight);
+      gl.uniform2f(uGridSize, charWidthRef.current, charHeightRef.current);
 
       const uScale = gl.getUniformLocation(program, 'u_scale');
-      gl.uniform1f(uScale, scale);
+      gl.uniform1f(uScale, scaleRef.current);
 
       const uSpeed = gl.getUniformLocation(program, 'u_speed');
-      gl.uniform1f(uSpeed, speed);
+      gl.uniform1f(uSpeed, speedRef.current);
 
       const uBrightness = gl.getUniformLocation(program, 'u_brightness');
-      gl.uniform1f(uBrightness, brightness);
+      gl.uniform1f(uBrightness, brightnessRef.current);
 
       const uMode = gl.getUniformLocation(program, 'u_mode');
-      gl.uniform1i(uMode, mode);
+      gl.uniform1i(uMode, modeRef.current);
 
       const uColorMode = gl.getUniformLocation(program, 'u_color_mode');
-      gl.uniform1i(uColorMode, activeTheme.mode);
+      gl.uniform1i(uColorMode, themeRef.current.mode);
 
       // Hex to gl.uniform3f conversions
-      const rgbSolid = hexToRgb(activeTheme.solid);
+      const rgbSolid = hexToRgb(themeRef.current.solid);
       const uSolid = gl.getUniformLocation(program, 'u_color_solid');
       gl.uniform3f(uSolid, rgbSolid[0], rgbSolid[1], rgbSolid[2]);
 
-      const rgbStart = hexToRgb(activeTheme.gradStart);
+      const rgbStart = hexToRgb(themeRef.current.gradStart);
       const uStart = gl.getUniformLocation(program, 'u_color_grad_start');
       gl.uniform3f(uStart, rgbStart[0], rgbStart[1], rgbStart[2]);
 
-      const rgbEnd = hexToRgb(activeTheme.gradEnd);
+      const rgbEnd = hexToRgb(themeRef.current.gradEnd);
       const uEnd = gl.getUniformLocation(program, 'u_color_grad_end');
       gl.uniform3f(uEnd, rgbEnd[0], rgbEnd[1], rgbEnd[2]);
 
-      const rgbBg = hexToRgb(activeTheme.bg);
+      const rgbBg = hexToRgb(themeRef.current.bg);
       const uBg = gl.getUniformLocation(program, 'u_color_bg');
       gl.uniform3f(uBg, rgbBg[0], rgbBg[1], rgbBg[2]);
 
@@ -585,7 +656,7 @@ export function AsciiShader() {
       gl.uniform2f(uMouse, mousePosRef.current.x, mousePosRef.current.y);
 
       const uCharCount = gl.getUniformLocation(program, 'u_char_count');
-      gl.uniform1f(uCharCount, chars.length);
+      gl.uniform1f(uCharCount, charsLengthRef.current);
 
       // Active font atlas
       if (fontAtlasTextureRef.current) {
@@ -596,14 +667,14 @@ export function AsciiShader() {
       }
 
       // Custom image mode
-      if (mode === 3 && imageTextureRef.current) {
+      if (modeRef.current === 3 && imageTextureRef.current) {
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, imageTextureRef.current);
         const uImageTex = gl.getUniformLocation(program, 'u_image_texture');
         gl.uniform1i(uImageTex, 1);
 
         const uUseImgColor = gl.getUniformLocation(program, 'u_use_image_color');
-        gl.uniform1i(uUseImgColor, useImageColor ? 1 : 0);
+        gl.uniform1i(uUseImgColor, useImageColorRef.current ? 1 : 0);
       }
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -630,7 +701,7 @@ export function AsciiShader() {
       gl.deleteShader(fs);
       gl.deleteBuffer(buffer);
     };
-  }, [chars, charWidth, charHeight, scale, speed, brightness, mode, themeIndex, useImageColor]);
+  }, [rebuildFontAtlas]);
 
   // Re-build atlas canvas whenever chars or size changes
   useEffect(() => {
@@ -638,7 +709,7 @@ export function AsciiShader() {
     if (gl) {
       rebuildFontAtlas(gl, chars, charWidth, charHeight);
     }
-  }, [chars, charWidth, charHeight]);
+  }, [chars, charWidth, charHeight, rebuildFontAtlas]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -683,7 +754,12 @@ export function AsciiShader() {
 
   const jsGalaxy = (x: number, y: number, time: number, outRef: { r: number }) => {
     let px = x - 0.5;
-    let py = y - 0.5;
+    const py = y - 0.5;
+    
+    // Apply aspect ratio
+    const canvas = canvasRef.current;
+    const aspect = canvas ? canvas.width / canvas.height : 1.0;
+    px *= aspect;
     
     // Rotate by -0.6 radians
     const cosA = Math.cos(-0.6);
@@ -691,22 +767,59 @@ export function AsciiShader() {
     const rx = px * cosA - py * sinA;
     const ry = px * sinA + py * cosA;
     
-    // Compress Y for 3D tilt perspective
-    px = rx;
-    py = ry / 0.32;
+    // 1. Volumetric Spherical Core Radius (calculated from uncompressed coordinates)
+    const r_core = Math.sqrt(rx*rx + ry*ry) * (scale / 3.5);
     
-    const r = Math.sqrt(px*px + py*py);
-    outRef.r = r;
-    const theta = Math.atan2(py, px);
+    // 2. Flat Disk Coordinates (inclination compression applied)
+    let dx = rx;
+    let dy = ry / 0.32;
+    dx *= (scale / 3.5);
+    dy *= (scale / 3.5);
     
-    const core = Math.exp(-r * 9.0) * 1.5;
-    let armsVal = Math.sin(theta * 2.0 - r * 6.5 + time * 1.2);
-    armsVal = Math.pow(Math.max(0.0, armsVal), 3.0);
-    const arms = armsVal * Math.exp(-r * 1.8) * 0.9;
+    const r_disk = Math.sqrt(dx*dx + dy*dy);
+    outRef.r = r_disk; // Pass disk radius back for gradient coloring
     
-    const stars = jsNoise(x, y) * 0.22 * Math.exp(-r * 1.5);
+    const rc = Math.max(r_core, 0.001);
+    const rd = Math.max(r_disk, 0.001);
+    const theta = Math.atan2(dy, dx);
     
-    return Math.min(1.0, Math.max(0.0, core + arms + stars));
+    // 3. Slow Pace & Motion with Differential Rotation
+    const localTime = time * 0.35;
+    const diffRotation = localTime * (0.15 / (rd + 0.08));
+    
+    // 4. Continuous Logarithmic Spiral Winding
+    const winding = -2.2 * Math.log(rd + 0.02);
+    
+    // 5. Multiple Spiral Arms
+    const num_arms = 2.0;
+    let minArmDist = 1.0e9;
+    
+    for (let i = 0; i < 4; i++) {
+      if (i >= num_arms) break;
+      const arm_offset = (2.0 * Math.PI / num_arms) * i;
+      
+      const armTheta = arm_offset + winding + diffRotation;
+      let dTheta = theta - armTheta;
+      
+      // Normalize to [-PI, PI]
+      dTheta = Math.atan2(Math.sin(dTheta), Math.cos(dTheta));
+      minArmDist = Math.min(minArmDist, Math.abs(dTheta));
+    }
+    
+    // Compute components
+    const core = Math.exp(-rc * 7.5) * 1.8 + Math.exp(-rc * 2.5) * 0.3;
+    
+    const armsVal = Math.exp(-minArmDist * minArmDist * 8.0);
+    const arms = armsVal * Math.exp(-rd * 1.3) * 0.85;
+    
+    const wideArmsVal = Math.exp(-minArmDist * minArmDist * 1.8);
+    const dust = wideArmsVal * jsNoiseFbm(dx * 25.0, dy * 25.0) * 0.28 * Math.exp(-rd * 1.0);
+    
+    const ambientDust = (jsNoiseFbm(dx * 12.0, dy * 12.0) * 0.12 + jsNoise(Math.floor(dx * 120.0), Math.floor(dy * 120.0)) * 0.08) * Math.exp(-rd * 0.8);
+    
+    const val = core + arms + dust + ambientDust + Math.exp(-rd * 1.8) * 0.08;
+    
+    return Math.min(1.0, Math.max(0.0, val));
   };
 
   // Generate ASCII block representational copy
@@ -905,6 +1018,16 @@ export function AsciiShader() {
                     variant={mode === idx ? 'default' : 'outline'}
                     onClick={() => {
                       setMode(idx as 0 | 1 | 2 | 3 | 4);
+                      const modePresets: Record<number, number> = {
+                        0: 2, // Mode 0 (fBm) -> Amber Terminal Flow
+                        1: 3, // Mode 1 (Plasma) -> Ocean Plasma Waves
+                        2: 1, // Mode 2 (Matrix) -> Matrix Digital Rain
+                        4: 0, // Mode 4 (Galaxy) -> Andromeda Galaxy
+                      };
+                      const presetIdx = modePresets[idx];
+                      if (presetIdx !== undefined) {
+                        applyPreset(PRESETS[presetIdx]);
+                      }
                     }}
                     className="text-[10px] px-0.5 h-8 shrink-0"
                   >
@@ -939,7 +1062,7 @@ export function AsciiShader() {
 
                 {uploadedImageSrc && (
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="truncate max-w-[150px]">Image Loaded</span>
+                    <span className="truncate max-w-37.5">Image Loaded</span>
                     <label className="flex items-center gap-1.5 cursor-pointer">
                       <input
                         type="checkbox"

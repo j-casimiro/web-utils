@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, Copy, Check, Trash2, Plus, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ const rebuildUrlString = (parts: {
   let proto = parts.protocol.trim();
   proto = proto.replace(/[:/]+$/, '');
   
-  let host = parts.host.trim();
+  const host = parts.host.trim();
   let pathname = parts.pathname.trim();
   if (pathname && !pathname.startsWith('/')) {
     pathname = '/' + pathname;
@@ -53,8 +53,25 @@ export function UrlParser() {
   const [rawUrl, setRawUrl] = useState('https://example.com/api/v1/users?search=hello%20world&sort=desc&page=1#results');
   const [copied, setCopied] = useState(false);
 
+  // Initial parsed object for local state initialization to prevent empty inputs flash
+  const initialObj = useMemo(() => {
+    const defaultUrl = 'https://example.com/api/v1/users?search=hello%20world&sort=desc&page=1#results';
+    try {
+      return new URL(defaultUrl);
+    } catch {
+      return null;
+    }
+  }, []);
+
   // We keep a separate ref to params so we don't regenerate IDs on every keystroke if we don't have to
-  const [params, setParams] = useState<QueryParam[]>([]);
+  const [params, setParams] = useState<QueryParam[]>(() => {
+    if (!initialObj) return [];
+    const initialParams: QueryParam[] = [];
+    initialObj.searchParams.forEach((value, key) => {
+      initialParams.push({ id: generateId(), key, value });
+    });
+    return initialParams;
+  });
 
   // Parse the URL
   const parsed = useMemo(() => {
@@ -69,72 +86,78 @@ export function UrlParser() {
     try {
       const urlObj = new URL(urlString);
       return { obj: urlObj, isValid: true, error: null };
-    } catch (e: any) {
-      return { obj: null, isValid: false, error: e.message };
+    } catch (e) {
+      const errorMsg = e instanceof Error ? e.message : 'Unknown error';
+      return { obj: null, isValid: false, error: errorMsg };
     }
   }, [rawUrl]);
-
-  // Initial parsed object for local state initialization to prevent empty inputs flash
-  const initialObj = useMemo(() => {
-    const defaultUrl = 'https://example.com/api/v1/users?search=hello%20world&sort=desc&page=1#results';
-    try {
-      return new URL(defaultUrl);
-    } catch (e) {
-      return null;
-    }
-  }, []);
 
   // Local state for each breakdown component, allowing smooth real-time edits without locking focus/cursor
   const [localProtocol, setLocalProtocol] = useState(() => initialObj ? initialObj.protocol.replace(/:$/, '') : '');
   const [localHost, setLocalHost] = useState(() => initialObj ? initialObj.host : '');
   const [localPathname, setLocalPathname] = useState(() => initialObj ? initialObj.pathname : '');
   const [localHash, setLocalHash] = useState(() => initialObj ? initialObj.hash : '');
-  const [activeField, setActiveField] = useState<'protocol' | 'host' | 'pathname' | 'hash' | null>(null);
 
   const hasObj = parsed && parsed.isValid && parsed.obj;
 
-  // Sync params when URL changes validly
-  useEffect(() => {
-    if (parsed && parsed.isValid && parsed.obj) {
+  const handleUrlChange = (newUrl: string) => {
+    setRawUrl(newUrl);
+    
+    const urlString = newUrl.trim();
+    if (!urlString) {
+      setLocalProtocol('');
+      setLocalHost('');
+      setLocalPathname('');
+      setLocalHash('');
+      setParams([]);
+      return;
+    }
+
+    // Auto-prepend https:// if missing protocol to help parser
+    let parsedUrlString = urlString;
+    if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(parsedUrlString)) {
+      parsedUrlString = 'https://' + parsedUrlString;
+    }
+
+    try {
+      const urlObj = new URL(parsedUrlString);
+      
+      // Update local states
+      setLocalProtocol(urlObj.protocol.replace(/:$/, ''));
+      setLocalHost(urlObj.host);
+      setLocalPathname(urlObj.pathname);
+      setLocalHash(urlObj.hash);
+      
+      // Update params if different
       const newParams: QueryParam[] = [];
-      parsed.obj.searchParams.forEach((value, key) => {
+      urlObj.searchParams.forEach((value, key) => {
         newParams.push({ id: generateId(), key, value });
       });
-      // Only update if stringified representation changes to prevent ID thrashing
-      const currentQuery = new URLSearchParams();
-      params.forEach(p => {
-        if (p.key) currentQuery.append(p.key, p.value);
-      });
       
-      if (parsed.obj.search !== '?' + currentQuery.toString() && parsed.obj.search !== currentQuery.toString()) {
-        setParams(newParams);
-      }
+      setParams(prevParams => {
+        const currentQuery = new URLSearchParams();
+        prevParams.forEach(p => {
+          if (p.key) currentQuery.append(p.key, p.value);
+        });
+        
+        if (urlObj.search !== '?' + currentQuery.toString() && urlObj.search !== currentQuery.toString()) {
+          return newParams;
+        }
+        return prevParams;
+      });
+    } catch {
+      // Invalid URL format - keep current breakdown fields as is
     }
-  }, [parsed]);
+  };
 
-  // Sync local breakdown inputs when parsed URL changes, but avoid overwriting the active field being edited
-  useEffect(() => {
-    if (hasObj) {
-      const obj = parsed.obj!;
-      if (activeField !== 'protocol') {
-        setLocalProtocol(obj.protocol.replace(/:$/, ''));
-      }
-      if (activeField !== 'host') {
-        setLocalHost(obj.host);
-      }
-      if (activeField !== 'pathname') {
-        setLocalPathname(obj.pathname);
-      }
-      if (activeField !== 'hash') {
-        setLocalHash(obj.hash);
-      }
-    } else if (!rawUrl) {
-      if (activeField !== 'protocol') setLocalProtocol('');
-      if (activeField !== 'host') setLocalHost('');
-      if (activeField !== 'pathname') setLocalPathname('');
-      if (activeField !== 'hash') setLocalHash('');
+  const handleBlur = () => {
+    if (parsed && parsed.isValid && parsed.obj) {
+      setLocalProtocol(parsed.obj.protocol.replace(/:$/, ''));
+      setLocalHost(parsed.obj.host);
+      setLocalPathname(parsed.obj.pathname);
+      setLocalHash(parsed.obj.hash);
     }
-  }, [parsed, rawUrl, activeField, hasObj]);
+  };
 
   // Handle table edits
   const updateParam = (id: string, newKey: string, newValue: string) => {
@@ -162,6 +185,11 @@ export function UrlParser() {
   const addParam = () => {
     if (!rawUrl) {
       setRawUrl('https://example.com/?new_key=value');
+      setLocalProtocol('https');
+      setLocalHost('example.com');
+      setLocalPathname('/');
+      setLocalHash('');
+      setParams([{ id: generateId(), key: 'new_key', value: 'value' }]);
       return;
     }
     
@@ -255,8 +283,10 @@ export function UrlParser() {
               onClick={async () => {
                 try {
                   const text = await navigator.clipboard.readText();
-                  setRawUrl(text);
-                } catch (err) {}
+                  handleUrlChange(text);
+                } catch {
+                  // Do nothing
+                }
               }}
               className="h-7 text-xs font-semibold px-2.5"
             >
@@ -265,7 +295,7 @@ export function UrlParser() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setRawUrl('')}
+              onClick={() => handleUrlChange('')}
               className="h-7 text-xs font-semibold px-2.5 text-muted-foreground hover:text-destructive"
             >
               Clear
@@ -275,7 +305,7 @@ export function UrlParser() {
         <div className="relative">
           <textarea
             value={rawUrl}
-            onChange={(e) => setRawUrl(e.target.value)}
+            onChange={(e) => handleUrlChange(e.target.value)}
             className={`w-full p-3 font-mono text-sm border rounded-lg bg-background text-foreground resize-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-all ${
               parsed && !parsed.isValid && rawUrl ? 'border-destructive focus-visible:ring-destructive' : 'border-input'
             }`}
@@ -307,8 +337,7 @@ export function UrlParser() {
                   setLocalProtocol(e.target.value);
                   updateComponent('protocol', e.target.value);
                 }}
-                onFocus={() => setActiveField('protocol')}
-                onBlur={() => setActiveField(null)}
+                onBlur={handleBlur}
                 disabled={!hasObj && !rawUrl}
                 placeholder="https"
                 className="font-mono text-sm bg-muted/10 border-border h-9 focus-visible:bg-background transition-colors disabled:opacity-50"
@@ -324,8 +353,7 @@ export function UrlParser() {
                   setLocalHost(e.target.value);
                   updateComponent('host', e.target.value);
                 }}
-                onFocus={() => setActiveField('host')}
-                onBlur={() => setActiveField(null)}
+                onBlur={handleBlur}
                 disabled={!hasObj && !rawUrl}
                 placeholder="example.com"
                 className="font-mono text-sm bg-muted/10 border-border h-9 focus-visible:bg-background transition-colors disabled:opacity-50"
@@ -341,8 +369,7 @@ export function UrlParser() {
                   setLocalPathname(e.target.value);
                   updateComponent('pathname', e.target.value);
                 }}
-                onFocus={() => setActiveField('pathname')}
-                onBlur={() => setActiveField(null)}
+                onBlur={handleBlur}
                 disabled={!hasObj && !rawUrl}
                 placeholder="/"
                 className="font-mono text-sm bg-muted/10 border-border h-9 focus-visible:bg-background transition-colors disabled:opacity-50"
@@ -358,8 +385,7 @@ export function UrlParser() {
                   setLocalHash(e.target.value);
                   updateComponent('hash', e.target.value);
                 }}
-                onFocus={() => setActiveField('hash')}
-                onBlur={() => setActiveField(null)}
+                onBlur={handleBlur}
                 disabled={!hasObj && !rawUrl}
                 placeholder="#"
                 className="font-mono text-sm bg-sky-500/5 border-sky-500/20 text-sky-600 dark:text-sky-400 h-9 focus-visible:bg-background transition-colors disabled:opacity-50"
