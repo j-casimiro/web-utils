@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Terminal, Copy, Check, Download, Upload, Sliders } from 'lucide-react';
+import { Sparkles, Terminal, Copy, Check, Download, Upload, Sliders, Monitor } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -284,6 +284,20 @@ export function AsciiShader() {
   // Copy success tooltips
   const [copiedText, setCopiedText] = useState(false);
   const [copiedHtml, setCopiedHtml] = useState(false);
+
+  const [isScreensaver, setIsScreensaver] = useState(false);
+
+  // Exit screensaver mode on keypress or click
+  useEffect(() => {
+    if (!isScreensaver) return;
+    const handleExit = () => setIsScreensaver(false);
+    window.addEventListener('keydown', handleExit);
+    window.addEventListener('mousedown', handleExit);
+    return () => {
+      window.removeEventListener('keydown', handleExit);
+      window.removeEventListener('mousedown', handleExit);
+    };
+  }, [isScreensaver]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
@@ -711,19 +725,44 @@ export function AsciiShader() {
       <div className="flex flex-col lg:flex-row gap-6 w-full items-stretch">
         
         {/* VIEWPORT CANVAS */}
-        <div className="flex-1 flex flex-col gap-3 relative min-w-0" style={{ height: 'calc(100vh - 280px)', minHeight: '550px' }}>
-          <div className="flex justify-between items-center bg-muted/20 px-4 py-2 rounded-lg border border-border shrink-0">
-            <span className="text-xs font-semibold text-muted-foreground flex items-center">
-              <Terminal className="w-3.5 h-3.5 mr-1.5 text-primary" />
-              Viewport: {mode === 3 ? 'Custom Image Layer' : mode === 0 ? 'fBm Noise Flow' : mode === 1 ? 'Sine Plasma Waves' : 'Matrix Digital Rain'}
-            </span>
-          </div>
+        <div 
+          className={isScreensaver ? 
+            "fixed inset-0 z-50 w-screen h-screen m-0 p-0 bg-black select-none" : 
+            "flex-1 relative rounded-xl border border-border overflow-hidden bg-black select-none min-w-0"
+          }
+          style={isScreensaver ? {} : { height: 'calc(100vh - 200px)', minHeight: '550px' }}
+        >
+          {/* Floating Minimal Info Badge */}
+          {!isScreensaver && (
+            <div className="absolute top-4 left-4 z-20 bg-background/55 backdrop-blur-md border border-border/30 text-[10px] px-2.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg select-none font-bold uppercase tracking-wider text-muted-foreground">
+              <Terminal className="w-3.5 h-3.5 text-primary" />
+              <span>
+                {mode === 3 ? 'Image Mode' : mode === 0 ? 'fBm Noise' : mode === 1 ? 'Sine Plasma' : 'Matrix Rain'}
+              </span>
+            </div>
+          )}
 
-          <div 
-            className={`flex-1 relative rounded-xl border border-border overflow-hidden bg-black select-none ${
-              crt ? 'crt-effect' : ''
-            }`}
-          >
+          {/* Floating Screen Saver Trigger Button */}
+          {!isScreensaver && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsScreensaver(true)}
+              className="absolute top-4 right-4 z-20 bg-background/55 backdrop-blur-md border border-border/30 hover:bg-background/80 hover:text-foreground text-muted-foreground h-7 text-[10px] font-semibold px-2.5 rounded-full flex items-center gap-1.5 shadow-lg transition-all"
+            >
+              <Monitor className="w-3.5 h-3.5 text-primary" />
+              Screen Saver
+            </Button>
+          )}
+
+          {/* Floating Exit Message for Screen Saver */}
+          {isScreensaver && (
+            <div className="absolute top-4 right-4 z-50 bg-black/60 backdrop-blur-md border border-white/10 text-[10px] px-3.5 py-1.5 rounded-full text-white/50 flex items-center gap-1.5 select-none font-bold uppercase tracking-wider pointer-events-none animate-pulse">
+              Press any key or click to exit
+            </div>
+          )}
+
+          <div className={`w-full h-full relative ${crt ? 'crt-effect' : ''}`}>
             <canvas
               ref={canvasRef}
               onMouseMove={handleMouseMove}
@@ -736,7 +775,7 @@ export function AsciiShader() {
         {/* CONTROLS SIDEBAR */}
         <Card 
           className="w-full lg:w-96 p-5 shrink-0 bg-card border-border flex flex-col gap-6 custom-scrollbar overflow-y-auto"
-          style={{ height: 'calc(100vh - 280px)', minHeight: '550px' }}
+          style={{ height: 'calc(100vh - 200px)', minHeight: '550px' }}
         >
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5 mb-2">

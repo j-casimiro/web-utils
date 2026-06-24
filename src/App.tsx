@@ -204,6 +204,7 @@ export default function App() {
             onBack={() => setActiveToolId(null)}
             theme={theme}
             onToggleTheme={handleToggleTheme}
+            noCard={activeTool.id === 'ascii-shader'}
           >
             <ActiveToolComponent />
           </ToolWrapper>

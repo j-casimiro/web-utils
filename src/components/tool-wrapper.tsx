@@ -10,6 +10,7 @@ interface ToolWrapperProps {
   children: React.ReactNode;
   theme?: 'dark' | 'light';
   onToggleTheme?: () => void;
+  noCard?: boolean;
 }
 
 export function ToolWrapper({
@@ -19,6 +20,7 @@ export function ToolWrapper({
   children,
   theme,
   onToggleTheme,
+  noCard,
 }: ToolWrapperProps) {
   return (
     <div className="w-full space-y-6">
@@ -58,9 +60,13 @@ export function ToolWrapper({
         )}
       </div>
 
-      <Card className="border-border bg-card text-foreground shadow-xl">
-        <CardContent className="pt-6">{children}</CardContent>
-      </Card>
+      {noCard ? (
+        <div className="w-full">{children}</div>
+      ) : (
+        <Card className="border-border bg-card text-foreground shadow-xl">
+          <CardContent className="pt-6">{children}</CardContent>
+        </Card>
+      )}
     </div>
   );
 }
