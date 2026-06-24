@@ -3,6 +3,7 @@ import { Sparkles, Terminal, Copy, Check, Download, Upload, Sliders, Monitor } f
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { BlackholeShader } from './blackhole-shader';
 
 interface ColorTheme {
   name: string;
@@ -15,7 +16,7 @@ interface ColorTheme {
 
 interface Preset {
   name: string;
-  mode: 0 | 1 | 2 | 3 | 4; // 0 = Perlin, 1 = Plasma, 2 = Matrix, 3 = Image, 4 = Galaxy
+  mode: 0 | 1 | 2 | 3 | 4 | 5; // 0 = Perlin, 1 = Plasma, 2 = Matrix, 3 = Image, 4 = Galaxy, 5 = Blackhole
   chars: string;
   charWidth: number;
   charHeight: number;
@@ -38,6 +39,18 @@ const COLOR_THEMES: ColorTheme[] = [
 ];
 
 const PRESETS: Preset[] = [
+  {
+    name: 'Gargantua Black Hole',
+    mode: 5,
+    chars: ' .,:;+*?%S#@',
+    charWidth: 8,
+    charHeight: 14,
+    scale: 1.0,
+    speed: 1.0,
+    brightness: 1.0,
+    themeIndex: 4, // Volcanic Glow
+    crt: true
+  },
   {
     name: 'Andromeda Galaxy',
     mode: 4,
@@ -361,13 +374,13 @@ const FRAGMENT_SHADER_SOURCE = `
 
 export function AsciiShader() {
   // Preset or customized states
-  const [mode, setMode] = useState<0 | 1 | 2 | 3 | 4>(0);
-  const [chars, setChars] = useState(' .:-=+*#%@');
+  const [mode, setMode] = useState<0 | 1 | 2 | 3 | 4 | 5>(5);
+  const [chars, setChars] = useState(' .,:;+*?%S#@');
   const [charWidth, setCharWidth] = useState(8);
   const [charHeight, setCharHeight] = useState(14);
   const [scale, setScale] = useState(4.5);
-  const [speed, setSpeed] = useState(0.8);
-  const [brightness, setBrightness] = useState(0.9);
+  const [speed, setSpeed] = useState(1.0);
+  const [brightness, setBrightness] = useState(1.0);
   const [crt, setCrt] = useState(true);
 
   // Colors & Themes
@@ -944,7 +957,7 @@ export function AsciiShader() {
             <div className="absolute top-4 left-4 z-20 bg-background/55 backdrop-blur-md border border-border/30 text-[10px] px-2.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg select-none font-bold uppercase tracking-wider text-muted-foreground">
               <Terminal className="w-3.5 h-3.5 text-primary" />
               <span>
-                {mode === 3 ? 'Image Mode' : mode === 0 ? 'fBm Noise' : mode === 1 ? 'Sine Plasma' : 'Matrix Rain'}
+                {mode === 5 ? 'Gargantua Black Hole' : mode === 4 ? 'Galaxy Mode' : mode === 3 ? 'Image Mode' : mode === 0 ? 'fBm Noise' : mode === 1 ? 'Sine Plasma' : 'Matrix Rain'}
               </span>
             </div>
           )}
@@ -970,12 +983,25 @@ export function AsciiShader() {
           )}
 
           <div className={`w-full h-full relative ${crt ? 'crt-effect' : ''}`}>
-            <canvas
-              ref={canvasRef}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
-              className="w-full h-full block cursor-crosshair"
-            />
+            {mode === 5 ? (
+              <BlackholeShader
+                chars={chars}
+                charWidth={charWidth}
+                charHeight={charHeight}
+                speed={speed}
+                brightness={brightness}
+                crt={crt}
+                isParentScreensaver={isScreensaver}
+                onExitParentScreensaver={() => setIsScreensaver(false)}
+              />
+            ) : (
+              <canvas
+                ref={canvasRef}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+                className="w-full h-full block cursor-crosshair"
+              />
+            )}
           </div>
         </div>
 
@@ -1010,19 +1036,20 @@ export function AsciiShader() {
             
             <div className="space-y-3">
               <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">Shader Algorithm</label>
-              <div className="grid grid-cols-5 gap-1">
-                {(['fBm', 'Plasma', 'Matrix', 'Image', 'Galaxy'] as const).map((label, idx) => (
+              <div className="grid grid-cols-6 gap-1">
+                {(['fBm', 'Plasma', 'Matrix', 'Image', 'Galaxy', 'Blackhole'] as const).map((label, idx) => (
                   <Button
                     key={label}
                     size="sm"
                     variant={mode === idx ? 'default' : 'outline'}
                     onClick={() => {
-                      setMode(idx as 0 | 1 | 2 | 3 | 4);
+                      setMode(idx as 0 | 1 | 2 | 3 | 4 | 5);
                       const modePresets: Record<number, number> = {
-                        0: 2, // Mode 0 (fBm) -> Amber Terminal Flow
-                        1: 3, // Mode 1 (Plasma) -> Ocean Plasma Waves
-                        2: 1, // Mode 2 (Matrix) -> Matrix Digital Rain
-                        4: 0, // Mode 4 (Galaxy) -> Andromeda Galaxy
+                        0: 3, // Mode 0 (fBm) -> Amber Terminal Flow
+                        1: 4, // Mode 1 (Plasma) -> Ocean Plasma Waves
+                        2: 2, // Mode 2 (Matrix) -> Matrix Digital Rain
+                        4: 1, // Mode 4 (Galaxy) -> Andromeda Galaxy
+                        5: 0, // Mode 5 (Blackhole) -> Gargantua Black Hole
                       };
                       const presetIdx = modePresets[idx];
                       if (presetIdx !== undefined) {

@@ -197,7 +197,7 @@ export default function App() {
       <main className={`flex-1 w-full mx-auto px-4 transition-all duration-300 ${
         activeToolId ? 'py-6' : 'py-16'
       } ${
-        activeToolId === 'keyboard-inspector' || activeToolId === 'ascii-shader' ? 'max-w-none md:px-8 lg:px-12' : 'max-w-5xl'
+        activeToolId === 'keyboard-inspector' || activeToolId === 'ascii-shader' || activeToolId === 'blackhole-shader' ? 'max-w-none md:px-8 lg:px-12' : 'max-w-5xl'
       }`}>
         {ActiveToolComponent && activeTool ? (
           <ToolWrapper
@@ -206,7 +206,7 @@ export default function App() {
             onBack={() => setActiveToolId(null)}
             theme={theme}
             onToggleTheme={handleToggleTheme}
-            noCard={activeTool.id === 'ascii-shader'}
+            noCard={activeTool.id === 'ascii-shader' || activeTool.id === 'blackhole-shader'}
           >
             <ActiveToolComponent />
           </ToolWrapper>
