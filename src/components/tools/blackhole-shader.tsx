@@ -12,7 +12,6 @@ const VERTEX_SHADER = `
   }
 `;
 
-// ─── Fragment Shader: Gargantua Black Hole ────────────────────────────
 const FRAGMENT_SHADER = `
   precision highp float;
 
@@ -21,6 +20,13 @@ const FRAGMENT_SHADER = `
   uniform vec2  u_grid_size;
   uniform float u_speed;
   uniform float u_brightness;
+
+  // Color theme uniforms
+  uniform int   u_color_mode;
+  uniform vec3  u_color_solid;
+  uniform vec3  u_color_grad_start;
+  uniform vec3  u_color_grad_end;
+  uniform vec3  u_color_bg;
 
   // Font atlas
   uniform sampler2D u_font_atlas;
@@ -123,7 +129,7 @@ const FRAGMENT_SHADER = `
         // Accretion disk radius: 1.8 to 4.8
         if (dR >= 1.8 && dR <= 4.8) {
           float diskMask = smoothstep(1.8, 2.1, dR) * smoothstep(4.8, 3.8, dR);
-          float radialGlow = exp(-(dR - 1.8) * 0.7) * diskMask;
+          float radialGlow = exp(-(dR - 1.8) * 0.5) * diskMask;
           
           float phi = atan(intersect.z, intersect.x);
           float omega = 2.0 * pow(dR, -1.5); // Keplerian rotation speed
@@ -136,19 +142,27 @@ const FRAGMENT_SHADER = `
           float turb = fbm(vec2(dR * 1.5, phi_rot * 1.0)) * 0.55 + 0.45;
           
           // Doppler beaming
-          float doppler = 1.0 - 0.55 * (intersect.x / dR);
+          float doppler = 1.1 - 0.5 * (intersect.x / dR);
           
           float density = radialGlow * mix(0.35, 1.0, spiral) * turb * doppler * u_brightness;
           
-          // Temperature-based color grading
+          // Theme-based or classic color temperature grading
           vec3 tempColor;
-          if (dR < 2.6) {
-            tempColor = mix(vec3(1.0, 0.96, 0.92), vec3(1.0, 0.72, 0.28), (dR - 1.8) / 0.8);
+          if (u_color_mode == 0) {
+            tempColor = u_color_solid;
+          } else if (u_color_mode == 1 || u_color_mode == 3) {
+            float factor = clamp((dR - 1.8) / 3.0, 0.0, 1.0);
+            tempColor = mix(u_color_grad_start, u_color_grad_end, factor);
           } else {
-            tempColor = mix(vec3(1.0, 0.72, 0.28), vec3(0.55, 0.1, 0.02), (dR - 2.6) / 2.2);
+            // Volcanic/Default (classic Gargantua colors)
+            if (dR < 2.6) {
+              tempColor = mix(vec3(1.0, 0.96, 0.92), vec3(1.0, 0.72, 0.28), (dR - 1.8) / 0.8);
+            } else {
+              tempColor = mix(vec3(1.0, 0.72, 0.28), vec3(0.55, 0.1, 0.02), (dR - 2.6) / 2.2);
+            }
           }
           
-          float alpha = density * 0.75;
+          float alpha = density * 1.15;
           accumulatedColor += (1.0 - totalGlow) * tempColor * alpha;
           totalGlow += (1.0 - totalGlow) * alpha;
         }
@@ -181,11 +195,19 @@ const FRAGMENT_SHADER = `
     vec2 fontUv = vec2((charIdx + localCoords.x) / u_char_count, localCoords.y);
     float charIntensity = texture2D(u_font_atlas, fontUv).r;
 
-    // Mix final color with pure black background
-    gl_FragColor = vec4(color * charIntensity, 1.0);
+    // Mix final color with theme background color
+    gl_FragColor = vec4(mix(u_color_bg, color, charIntensity), 1.0);
   }
 `;
 
+
+const hexToRgb = (hex: string): [number, number, number] => {
+  const cleanHex = hex.replace('#', '');
+  const r = parseInt(cleanHex.substring(0, 2), 16) / 255;
+  const g = parseInt(cleanHex.substring(2, 4), 16) / 255;
+  const b = parseInt(cleanHex.substring(4, 6), 16) / 255;
+  return [r, g, b];
+};
 
 interface BlackholeShaderProps {
   chars?: string;
@@ -194,6 +216,11 @@ interface BlackholeShaderProps {
   speed?: number;
   brightness?: number;
   crt?: boolean;
+  colorMode?: number;
+  colorSolid?: string;
+  colorGradStart?: string;
+  colorGradEnd?: string;
+  colorBg?: string;
   isParentScreensaver?: boolean;
   onExitParentScreensaver?: () => void;
 }
@@ -205,6 +232,11 @@ export function BlackholeShader({
   speed = 1.0,
   brightness = 1.0,
   crt = true,
+  colorMode = 2,
+  colorSolid = '#ffb000',
+  colorGradStart = '#ff3300',
+  colorGradEnd = '#ffbb00',
+  colorBg = '#000000',
   isParentScreensaver,
   onExitParentScreensaver,
 }: BlackholeShaderProps) {
@@ -239,6 +271,12 @@ export function BlackholeShader({
   const charHeightRef = useRef(charHeight);
   const speedRef = useRef(speed);
   const brightnessRef = useRef(brightness);
+  
+  const colorModeRef = useRef(colorMode);
+  const colorSolidRef = useRef(hexToRgb(colorSolid));
+  const colorGradStartRef = useRef(hexToRgb(colorGradStart));
+  const colorGradEndRef = useRef(hexToRgb(colorGradEnd));
+  const colorBgRef = useRef(hexToRgb(colorBg));
 
   useEffect(() => {
     charsRef.current = chars;
@@ -246,7 +284,13 @@ export function BlackholeShader({
     charHeightRef.current = charHeight;
     speedRef.current = speed;
     brightnessRef.current = brightness;
-  }, [chars, charWidth, charHeight, speed, brightness]);
+    
+    colorModeRef.current = colorMode;
+    colorSolidRef.current = hexToRgb(colorSolid);
+    colorGradStartRef.current = hexToRgb(colorGradStart);
+    colorGradEndRef.current = hexToRgb(colorGradEnd);
+    colorBgRef.current = hexToRgb(colorBg);
+  }, [chars, charWidth, charHeight, speed, brightness, colorMode, colorSolid, colorGradStart, colorGradEnd, colorBg]);
 
   // Build the font atlas texture
   const buildFontAtlas = useCallback((gl: WebGLRenderingContext, charsList: string, w: number, h: number) => {
@@ -383,6 +427,12 @@ export function BlackholeShader({
       gl.uniform1f(gl.getUniformLocation(program, 'u_char_count'), charsRef.current.length);
       gl.uniform1f(gl.getUniformLocation(program, 'u_speed'), speedRef.current);
       gl.uniform1f(gl.getUniformLocation(program, 'u_brightness'), brightnessRef.current);
+
+      gl.uniform1i(gl.getUniformLocation(program, 'u_color_mode'), colorModeRef.current);
+      gl.uniform3fv(gl.getUniformLocation(program, 'u_color_solid'), colorSolidRef.current);
+      gl.uniform3fv(gl.getUniformLocation(program, 'u_color_grad_start'), colorGradStartRef.current);
+      gl.uniform3fv(gl.getUniformLocation(program, 'u_color_grad_end'), colorGradEndRef.current);
+      gl.uniform3fv(gl.getUniformLocation(program, 'u_color_bg'), colorBgRef.current);
 
       // Bind font atlas
       if (fontAtlasTextureRef.current) {

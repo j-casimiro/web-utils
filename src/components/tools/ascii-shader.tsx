@@ -47,7 +47,7 @@ const PRESETS: Preset[] = [
     charHeight: 14,
     scale: 1.0,
     speed: 1.0,
-    brightness: 1.0,
+    brightness: 1.25,
     themeIndex: 4, // Volcanic Glow
     crt: true
   },
@@ -380,7 +380,7 @@ export function AsciiShader() {
   const [charHeight, setCharHeight] = useState(14);
   const [scale, setScale] = useState(4.5);
   const [speed, setSpeed] = useState(1.0);
-  const [brightness, setBrightness] = useState(1.0);
+  const [brightness, setBrightness] = useState(1.25);
   const [crt, setCrt] = useState(true);
 
   // Colors & Themes
@@ -991,6 +991,11 @@ export function AsciiShader() {
                 speed={speed}
                 brightness={brightness}
                 crt={crt}
+                colorMode={activeTheme.mode}
+                colorSolid={activeTheme.solid}
+                colorGradStart={activeTheme.gradStart}
+                colorGradEnd={activeTheme.gradEnd}
+                colorBg={activeTheme.bg}
                 isParentScreensaver={isScreensaver}
                 onExitParentScreensaver={() => setIsScreensaver(false)}
               />
