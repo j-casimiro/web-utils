@@ -91,47 +91,36 @@ const FRAGMENT_SHADER = `
     float d = length(p);
 
     // 1. Event Horizon Mask (Shadow)
-    float horizonMask = smoothstep(0.088, 0.092, d);
+    float horizonMask = smoothstep(0.082, 0.096, d);
 
     // 2. Photon Ring (right at the edge of event horizon)
-    float photonRadius = 0.093;
-    float photonThickness = 0.0022;
-    float photonRing = exp(-pow((d - photonRadius) / photonThickness, 2.0)) * 0.95;
-    // Doppler beaming on photon ring (rotating)
-    photonRing *= (1.0 - 0.45 * (p.x / (d + 0.001)));
+    float photonGlow = exp(-pow((d - 0.092) / 0.0025, 2.0)) * 0.9 * horizonMask;
+    // Doppler beaming on photon ring
+    photonGlow *= (1.0 - 0.45 * (p.x / (d + 0.001)));
 
-    // 3. Lensed Ring (Einstein Ring - top/bottom back-disk arches)
-    // Flattened vertically (elliptical) to simulate accretion disk tilt angle
-    float ringR = length(vec2(p.x, p.y / 0.82));
-    float ringTargetRadius = 0.175;
-    float ringThickness = 0.026;
-    float ringIntensity = exp(-pow((ringR - ringTargetRadius) / ringThickness, 2.0));
+    // 3. Lensed Halo (Einstein Lensing Ray-Deflection Approximation)
+    float r_lens = d - (0.018 / max(d, 0.001));
+    float ringIntensity = exp(-pow((r_lens - 0.145) / 0.042, 2.0));
     
-    // Polar coords for orbital rotation noise
+    // Polar swirl noise with differential velocity profile
     float theta = atan(p.y, p.x);
-    float theta_rot = theta - u_time * u_speed * 1.6;
-    float ringNoise = fbm(vec2(ringR * 14.0, theta_rot * 4.5));
-    float ringVal = ringIntensity * mix(0.4, 1.6, ringNoise);
-    // Doppler beaming (brighter on the left side, representing rotation towards camera)
-    ringVal *= (1.0 - 0.55 * (p.x / (d + 0.001)));
+    float speed_profile = u_time * u_speed * (0.05 / max(d, 0.01));
+    float swirlNoise = fbm(vec2(d * 12.0, theta - speed_profile));
+    float noiseVal = mix(0.35, 1.65, swirlNoise);
+
+    // Doppler beaming (brighter on the left side)
+    float doppler = 1.0 - 0.55 * (p.x / (d + 0.001));
+    float ringGlow = ringIntensity * noiseVal * doppler * horizonMask;
 
     // 4. Front Accretion Disk (straight horizontal band crossing in front of horizon)
     // Width flares out at the sides, very thin across the middle
-    float diskWidth = 0.011 + 0.048 * abs(p.x);
+    float diskWidth = 0.012 + 0.045 * abs(p.x);
     float diskIntensity = exp(-pow(p.y / diskWidth, 2.0));
-    float diskFade = smoothstep(0.68, 0.16, abs(p.x));
-    
-    // Horizontal flow noise
-    float flowX = p.x - u_time * u_speed * 1.4;
-    float diskNoise = fbm(vec2(flowX * 9.0, p.y * 32.0));
-    float diskVal = diskIntensity * mix(0.4, 1.6, diskNoise) * diskFade;
-    // Doppler beaming on front disk
-    diskVal *= (1.0 - 0.6 * (p.x / (d + 0.001)));
+    float diskFade = exp(-pow(p.x / 0.35, 2.0)); // Continuous exponential decay profile
+    float diskGlow = diskIntensity * diskFade * noiseVal * doppler;
 
     // Combine intensities
-    float ringGlow = ringVal * horizonMask;
-    float photonGlow = photonRing * horizonMask;
-    float diskGlow = diskVal; // Front disk passes in front of the horizon
+    float accum = photonGlow + ringGlow + diskGlow;
 
     // 5. Background Starfield with gravitational lensing warp
     vec2 starP = p;
@@ -143,7 +132,7 @@ const FRAGMENT_SHADER = `
     vec3 starColor = vec3(0.9, 0.93, 1.0) * stars;
 
     // Resolve color of each component
-    float r_eff_ring = ringR * 26.0 + 2.6;
+    float r_eff_ring = abs(r_lens) * 26.0 + 2.6;
     vec3 colorRing = getTemperatureColor(r_eff_ring);
     
     vec3 colorPhoton = getTemperatureColor(2.6); // Hot white-yellow core
@@ -153,23 +142,16 @@ const FRAGMENT_SHADER = `
 
     // Blend components based on relative intensity
     vec3 color = vec3(0.0);
-    float accum = 0.0;
-
     color += colorPhoton * photonGlow;
-    accum += photonGlow;
-
     color += colorRing * ringGlow;
-    accum += ringGlow;
-
     color += colorDisk * diskGlow;
-    accum += diskGlow;
 
     if (accum > 0.001) {
       color /= accum;
     }
 
     // Boost brightness and apply u_brightness control
-    float finalGlow = accum * u_brightness * 1.5;
+    float finalGlow = accum * u_brightness * 1.6;
 
     // Add starfield
     if (d > 0.09) {
