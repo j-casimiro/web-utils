@@ -195,7 +195,7 @@ export default function App() {
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       {/* Main Content */}
       <main className={`flex-1 w-full mx-auto px-4 py-16 transition-all duration-300 ${
-        activeToolId === 'keyboard-inspector' ? 'max-w-none md:px-8 lg:px-12' : 'max-w-5xl'
+        activeToolId === 'keyboard-inspector' || activeToolId === 'ascii-shader' ? 'max-w-none md:px-8 lg:px-12' : 'max-w-5xl'
       }`}>
         {ActiveToolComponent && activeTool ? (
           <ToolWrapper

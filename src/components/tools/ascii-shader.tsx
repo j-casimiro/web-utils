@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Terminal, Copy, Check, Download, Maximize2, Minimize2, Upload, Sliders } from 'lucide-react';
+import { Sparkles, Terminal, Copy, Check, Download, Upload, Sliders } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -284,9 +284,6 @@ export function AsciiShader() {
   // Copy success tooltips
   const [copiedText, setCopiedText] = useState(false);
   const [copiedHtml, setCopiedHtml] = useState(false);
-
-  // Screen sizing
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
@@ -680,50 +677,53 @@ export function AsciiShader() {
   };
 
   return (
-    <div className={`flex flex-col gap-6 ${isFullscreen ? 'fixed inset-0 z-50 bg-background p-6' : ''}`}>
-      <div className="flex flex-col lg:flex-row gap-6">
+    <div className="flex flex-col gap-6 w-full">
+      {/* Custom Scrollbar and CRT scanline styling */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(156, 163, 175, 0.15);
+          border-radius: 9999px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(156, 163, 175, 0.35);
+        }
+        
+        .crt-effect::after {
+          content: " ";
+          display: block;
+          position: absolute;
+          top: 0; left: 0; bottom: 0; right: 0;
+          background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), 
+                      linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
+          background-size: 100% 4px, 6px 100%;
+          z-index: 10;
+          pointer-events: none;
+          opacity: 0.85;
+        }
+      `}} />
+
+      <div className="flex flex-col lg:flex-row gap-6 w-full items-stretch">
         
         {/* VIEWPORT CANVAS */}
-        <div className="flex-1 flex flex-col gap-3 min-h-[400px] lg:min-h-[550px] relative">
-          <div className="flex justify-between items-center bg-muted/20 px-4 py-2 rounded-lg border border-border">
+        <div className="flex-1 flex flex-col gap-3 relative min-w-0" style={{ height: 'calc(100vh - 280px)', minHeight: '550px' }}>
+          <div className="flex justify-between items-center bg-muted/20 px-4 py-2 rounded-lg border border-border shrink-0">
             <span className="text-xs font-semibold text-muted-foreground flex items-center">
               <Terminal className="w-3.5 h-3.5 mr-1.5 text-primary" />
               Viewport: {mode === 3 ? 'Custom Image Layer' : mode === 0 ? 'fBm Noise Flow' : mode === 1 ? 'Sine Plasma Waves' : 'Matrix Digital Rain'}
             </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsFullscreen(!isFullscreen)}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            >
-              {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </Button>
           </div>
 
           <div 
             className={`flex-1 relative rounded-xl border border-border overflow-hidden bg-black select-none ${
               crt ? 'crt-effect' : ''
             }`}
-            style={{ minHeight: isFullscreen ? 'calc(100vh - 120px)' : '450px' }}
           >
-            {/* Custom CRT Scanlines Inject styling */}
-            {crt && (
-              <style dangerouslySetInnerHTML={{__html: `
-                .crt-effect::after {
-                  content: " ";
-                  display: block;
-                  position: absolute;
-                  top: 0; left: 0; bottom: 0; right: 0;
-                  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), 
-                              linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
-                  background-size: 100% 4px, 6px 100%;
-                  z-index: 10;
-                  pointer-events: none;
-                  opacity: 0.85;
-                }
-              `}} />
-            )}
-
             <canvas
               ref={canvasRef}
               onMouseMove={handleMouseMove}
@@ -734,7 +734,10 @@ export function AsciiShader() {
         </div>
 
         {/* CONTROLS SIDEBAR */}
-        <Card className="w-full lg:w-80 p-5 shrink-0 bg-card border-border flex flex-col gap-6 max-h-[700px] overflow-y-auto">
+        <Card 
+          className="w-full lg:w-96 p-5 shrink-0 bg-card border-border flex flex-col gap-6 custom-scrollbar overflow-y-auto"
+          style={{ height: 'calc(100vh - 280px)', minHeight: '550px' }}
+        >
           <div>
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5 mb-2">
               <Sliders className="w-4 h-4 text-primary" />
