@@ -58,13 +58,25 @@ const FRAGMENT_SHADER = `
     return v;
   }
 
-  // ── Smooth-min for blending ────────────────────────────────────
-  float smin(float a, float b, float k) {
-    float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-    return mix(b, a, h) - k * h * (1.0 - h);
+  // Helper for color temperature grading
+  vec3 getTemperatureColor(float r_eff) {
+    vec3 tempColor;
+    if (u_color_mode == 0) {
+      tempColor = u_color_solid;
+    } else if (u_color_mode == 1 || u_color_mode == 3) {
+      float factor = clamp((r_eff - 2.6) / 6.4, 0.0, 1.0);
+      tempColor = mix(u_color_grad_start, u_color_grad_end, factor);
+    } else {
+      // Volcanic/Default (classic Gargantua colors)
+      if (r_eff < 3.8) {
+        tempColor = mix(vec3(1.0, 0.96, 0.92), vec3(1.0, 0.75, 0.35), clamp((r_eff - 2.6) / 1.2, 0.0, 1.0));
+      } else {
+        tempColor = mix(vec3(1.0, 0.75, 0.35), vec3(0.55, 0.1, 0.02), clamp((r_eff - 3.8) / 5.2, 0.0, 1.0));
+      }
+    }
+    return tempColor;
   }
 
-  // ── Gargantua black hole computation ──────────────────────────
   void main() {
     vec2 gridCoords = floor(gl_FragCoord.xy / u_grid_size);
     vec2 localCoords = fract(gl_FragCoord.xy / u_grid_size);
@@ -75,118 +87,98 @@ const FRAGMENT_SHADER = `
     vec2 p = uv - 0.5;
     p.x *= aspect;
 
-    // Camera settings
-    float camDist = 18.0;
-    float camAngle = 0.15; // ~8.5 degrees inclination (very flat)
-    float cosA = cos(camAngle);
-    float sinA = sin(camAngle);
-    
-    // Camera position (above the disk, looking slightly down)
-    vec3 ro = vec3(0.0, camDist * sinA, -camDist * cosA);
-    
-    // Camera axes
-    vec3 forward = vec3(0.0, -sinA, cosA);
-    vec3 right = vec3(1.0, 0.0, 0.0);
-    vec3 up = vec3(0.0, cosA, sinA);
-    
-    // Ray direction: zoom factor = 1.1 (telephoto zoom to correct perspective)
-    vec3 rd = normalize(forward * 1.1 + p.x * right + p.y * up);
+    // Radius from center
+    float d = length(p);
 
-    // Ray marching loop variables
-    vec3 pos = ro;
-    vec3 vel = rd;
+    // 1. Event Horizon Mask (Shadow)
+    float horizonMask = smoothstep(0.088, 0.092, d);
+
+    // 2. Photon Ring (right at the edge of event horizon)
+    float photonRadius = 0.093;
+    float photonThickness = 0.0022;
+    float photonRing = exp(-pow((d - photonRadius) / photonThickness, 2.0)) * 0.95;
+    // Doppler beaming on photon ring (rotating)
+    photonRing *= (1.0 - 0.45 * (p.x / (d + 0.001)));
+
+    // 3. Lensed Ring (Einstein Ring - top/bottom back-disk arches)
+    // Flattened vertically (elliptical) to simulate accretion disk tilt angle
+    float ringR = length(vec2(p.x, p.y / 0.82));
+    float ringTargetRadius = 0.175;
+    float ringThickness = 0.026;
+    float ringIntensity = exp(-pow((ringR - ringTargetRadius) / ringThickness, 2.0));
     
-    float totalGlow = 0.0;
-    vec3 accumulatedColor = vec3(0.0);
-    bool hitHorizon = false;
+    // Polar coords for orbital rotation noise
+    float theta = atan(p.y, p.x);
+    float theta_rot = theta - u_time * u_speed * 1.6;
+    float ringNoise = fbm(vec2(ringR * 14.0, theta_rot * 4.5));
+    float ringVal = ringIntensity * mix(0.4, 1.6, ringNoise);
+    // Doppler beaming (brighter on the left side, representing rotation towards camera)
+    ringVal *= (1.0 - 0.55 * (p.x / (d + 0.001)));
+
+    // 4. Front Accretion Disk (straight horizontal band crossing in front of horizon)
+    // Width flares out at the sides, very thin across the middle
+    float diskWidth = 0.011 + 0.048 * abs(p.x);
+    float diskIntensity = exp(-pow(p.y / diskWidth, 2.0));
+    float diskFade = smoothstep(0.68, 0.16, abs(p.x));
     
-    for (int i = 0; i < 55; i++) {
-      float r2 = dot(pos, pos);
-      float r = sqrt(r2);
-      
-      // Schwarzschild radius Rs = 1.0. Event horizon is at r = 1.0.
-      if (r < 1.0) {
-        hitHorizon = true;
-        break;
-      }
-      
-      // Adaptive step size
-      float dt = 0.1 + 0.065 * r;
-      
-      // Gravity pull (accel = -1.5 * pos / r^5)
-      vec3 accel = -1.5 * pos / (r2 * r2 * r);
-      vel += accel * dt;
-      vel = normalize(vel); // Keep photon speed at c = 1
-      
-      vec3 nextPos = pos + vel * dt;
-      
-      // Check intersection with disk plane (y = 0)
-      if (pos.y * nextPos.y < 0.0) {
-        float t_intersect = -pos.y / (nextPos.y - pos.y);
-        vec3 intersect = pos + vel * dt * t_intersect;
-        float dR = length(intersect.xz);
-        
-        // Accretion disk radius: 2.6 to 9.0 (scaled to match camera distance)
-        if (dR >= 2.6 && dR <= 9.0) {
-          float diskMask = smoothstep(2.6, 3.0, dR) * smoothstep(9.0, 7.5, dR);
-          float radialGlow = exp(-(dR - 2.6) * 0.35) * diskMask;
-          
-          float phi = atan(intersect.z, intersect.x);
-          float omega = 2.2 * pow(dR, -1.5); // Keplerian rotation speed
-          float phi_rot = phi - u_time * u_speed * omega;
-          
-          // Spiral structure
-          float spiral = sin(phi_rot * 3.0 + dR * 0.8) * 0.5 + 0.5;
-          
-          // Noise/turbulence
-          float turb = fbm(vec2(dR * 1.0, phi_rot * 0.8)) * 0.55 + 0.45;
-          
-          // Doppler beaming
-          float doppler = 1.1 - 0.5 * (intersect.x / dR);
-          
-          float density = radialGlow * mix(0.35, 1.0, spiral) * turb * doppler * u_brightness;
-          
-          // Theme-based or classic color temperature grading
-          vec3 tempColor;
-          if (u_color_mode == 0) {
-            tempColor = u_color_solid;
-          } else if (u_color_mode == 1 || u_color_mode == 3) {
-            float factor = clamp((dR - 2.6) / 5.0, 0.0, 1.0);
-            tempColor = mix(u_color_grad_start, u_color_grad_end, factor);
-          } else {
-            // Volcanic/Default (classic Gargantua colors)
-            if (dR < 3.8) {
-              tempColor = mix(vec3(1.0, 0.96, 0.92), vec3(1.0, 0.72, 0.28), (dR - 2.6) / 1.2);
-            } else {
-              tempColor = mix(vec3(1.0, 0.72, 0.28), vec3(0.55, 0.1, 0.02), (dR - 3.8) / 5.2);
-            }
-          }
-          
-          float alpha = density * 1.15;
-          accumulatedColor += (1.0 - totalGlow) * tempColor * alpha;
-          totalGlow += (1.0 - totalGlow) * alpha;
-        }
-      }
-      
-      pos = nextPos;
+    // Horizontal flow noise
+    float flowX = p.x - u_time * u_speed * 1.4;
+    float diskNoise = fbm(vec2(flowX * 9.0, p.y * 32.0));
+    float diskVal = diskIntensity * mix(0.4, 1.6, diskNoise) * diskFade;
+    // Doppler beaming on front disk
+    diskVal *= (1.0 - 0.6 * (p.x / (d + 0.001)));
+
+    // Combine intensities
+    float ringGlow = ringVal * horizonMask;
+    float photonGlow = photonRing * horizonMask;
+    float diskGlow = diskVal; // Front disk passes in front of the horizon
+
+    // 5. Background Starfield with gravitational lensing warp
+    vec2 starP = p;
+    if (d > 0.085) {
+      starP = p * (1.0 + 0.0035 / (d - 0.083));
     }
+    float stars = step(0.9972, hash(floor(starP * 240.0))) * 0.15;
+    stars += step(0.9993, hash(floor(starP * 380.0 + vec2(42.0, 79.0)))) * 0.35;
+    vec3 starColor = vec3(0.9, 0.93, 1.0) * stars;
+
+    // Resolve color of each component
+    float r_eff_ring = ringR * 26.0 + 2.6;
+    vec3 colorRing = getTemperatureColor(r_eff_ring);
     
-    // Background starfield (visible only if ray escapes event horizon)
-    if (!hitHorizon) {
-      vec3 finalDir = normalize(vel);
-      float stars = step(0.996, hash(floor(finalDir.xy * 250.0))) * 0.15;
-      stars += step(0.9992, hash(floor(finalDir.yz * 400.0 + 50.0))) * 0.35;
-      
-      vec3 starColor = vec3(0.85, 0.9, 1.0) * stars;
-      accumulatedColor += (1.0 - totalGlow) * starColor;
-      totalGlow += (1.0 - totalGlow) * stars;
+    vec3 colorPhoton = getTemperatureColor(2.6); // Hot white-yellow core
+    
+    float r_eff_disk = abs(p.x) * 12.0 + 2.6;
+    vec3 colorDisk = getTemperatureColor(r_eff_disk);
+
+    // Blend components based on relative intensity
+    vec3 color = vec3(0.0);
+    float accum = 0.0;
+
+    color += colorPhoton * photonGlow;
+    accum += photonGlow;
+
+    color += colorRing * ringGlow;
+    accum += ringGlow;
+
+    color += colorDisk * diskGlow;
+    accum += diskGlow;
+
+    if (accum > 0.001) {
+      color /= accum;
     }
 
-    float val = clamp(totalGlow, 0.0, 1.0);
-    vec3 color = accumulatedColor;
-    
-    // Subtle cool tint in the background for depth
-    color = mix(color, vec3(0.12, 0.1, 0.16), (1.0 - val) * 0.06);
+    // Boost brightness and apply u_brightness control
+    float finalGlow = accum * u_brightness * 1.5;
+
+    // Add starfield
+    if (d > 0.09) {
+      float starMask = (1.0 - clamp(finalGlow * 1.8, 0.0, 1.0));
+      color += starColor * starMask * horizonMask;
+      finalGlow += stars * starMask * horizonMask;
+    }
+
+    float val = clamp(finalGlow, 0.0, 1.0);
 
     // ─── ASCII character lookup ─────────────────────────────
     float charIdx = floor(val * u_char_count);
