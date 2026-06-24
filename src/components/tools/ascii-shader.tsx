@@ -202,31 +202,60 @@ const FRAGMENT_SHADER_SOURCE = `
     return brightness;
   }
 
-  float galaxy(vec2 uv, float time) {
+  float galaxy(vec2 uv, float time, out float distFromCenter) {
     vec2 p = uv - vec2(0.5);
     p.x *= u_resolution.x / u_resolution.y;
     
+    // Rotate to match the Andromeda tilt angle (about -35 degrees / -0.6 radians)
+    float cosA = cos(-0.6);
+    float sinA = sin(-0.6);
+    mat2 rot = mat2(cosA, -sinA, sinA, cosA);
+    p = rot * p;
+    
+    // Inclination compression (3D tilt effect)
+    p.y /= 0.32; 
+    
     float r = length(p);
+    distFromCenter = r; // Pass back to main for coloring
+    
     float theta = atan(p.y, p.x);
     
-    float core = exp(-r * 8.0) * 1.3;
+    // Central bulge (glow)
+    float core = exp(-r * 9.0) * 1.5;
     
-    float armsVal = sin(theta * 2.0 - r * 7.0 + time * 1.2);
+    // Spiral arms
+    float armsVal = sin(theta * 2.0 - r * 6.5 + time * 1.2);
     armsVal = pow(max(0.0, armsVal), 3.0);
-    float arms = armsVal * exp(-r * 2.2) * 0.8;
+    float arms = armsVal * exp(-r * 1.8) * 0.9;
     
-    float stars = hash(floor(p * 250.0)) * 0.18 * exp(-r * 2.0);
-    float clusters = noise(p * 20.0 + time * 0.2) * 0.2 * exp(-r * 3.0);
+    // Star grain / speckles (make it look like individual stars)
+    float stars = hash(floor(p * 200.0)) * 0.22 * exp(-r * 1.5);
+    
+    // Larger cluster noise
+    float clusters = noise(p * 15.0 + time * 0.15) * 0.15 * exp(-r * 2.2);
     
     float val = core + arms + stars + clusters;
-    val += exp(-r * 2.5) * 0.15;
+    val += exp(-r * 2.0) * 0.12; // Outer glow
     
     return clamp(val, 0.0, 1.0);
   }
 
-  vec3 getColor(float value, vec2 uv, vec3 origImgColor) {
+  vec3 getColor(float value, vec2 uv, vec3 origImgColor, float r) {
     if (u_mode == 3 && u_use_image_color == 1) {
       return origImgColor;
+    }
+    if (u_mode == 4 && u_color_mode != 0) {
+      // Andromeda custom palette (white core, gold middle, red outer)
+      vec3 coreColor = vec3(0.9, 0.9, 1.0);
+      vec3 diskColor = vec3(1.0, 0.65, 0.35);
+      vec3 dustColor = vec3(0.8, 0.1, 0.3);
+      
+      if (r < 0.1) {
+        return mix(diskColor, coreColor, (0.1 - r) / 0.1);
+      } else {
+        float factor = clamp((r - 0.1) * 3.0, 0.0, 1.0);
+        return mix(diskColor, dustColor, factor);
+      }
     }
     if (u_color_mode == 0) {
       return u_color_solid;
@@ -260,10 +289,12 @@ const FRAGMENT_SHADER_SOURCE = `
     vec2 noiseUv = uv + vec2(0.0, warp);
     float val = 0.0;
     vec3 origImgColor = vec3(0.0);
+    float r = 0.0;
     
     if (u_mode == 0) {
       val = fbm(noiseUv * u_scale + vec2(0.0, -u_time * u_speed * 0.15));
       val = clamp(val * 1.5, 0.0, 1.0);
+      r = length(noiseUv - vec2(0.5));
     } else if (u_mode == 1) {
       vec2 c = (noiseUv * u_scale) - u_scale/2.0;
       float time = u_time * u_speed;
@@ -273,15 +304,18 @@ const FRAGMENT_SHADER_SOURCE = `
       v += sin(length(c) - time);
       val = (v / 3.0) + 0.5;
       val = clamp(val, 0.0, 1.0);
+      r = length(noiseUv - vec2(0.5));
     } else if (u_mode == 2) {
       val = matrixRain(gridCoords, u_grid_size.y);
+      r = 0.0;
     } else if (u_mode == 3) {
       // Y-axis flip is already handled by uploading texture properly
       vec4 texColor = texture2D(u_image_texture, vec2(uv.x, uv.y));
       val = (texColor.r + texColor.g + texColor.b) / 3.0;
       origImgColor = texColor.rgb;
+      r = length(noiseUv - vec2(0.5));
     } else if (u_mode == 4) {
-      val = galaxy(noiseUv, u_time * u_speed);
+      val = galaxy(noiseUv, u_time * u_speed, r);
     }
     
     val *= u_brightness;
@@ -292,7 +326,7 @@ const FRAGMENT_SHADER_SOURCE = `
     vec2 fontUv = vec2((charIdx + localCoords.x) / u_char_count, localCoords.y);
     float charIntensity = texture2D(u_font_atlas, fontUv).r;
     
-    vec3 color = getColor(val, uv, origImgColor);
+    vec3 color = getColor(val, uv, origImgColor, r);
     
     // Mix with bg color
     gl_FragColor = vec4(mix(u_color_bg, color, charIntensity), 1.0);
@@ -654,18 +688,30 @@ export function AsciiShader() {
     return (v / 3.0) + 0.5;
   };
 
-  const jsGalaxy = (x: number, y: number, time: number) => {
-    const px = x - 0.5;
-    const py = y - 0.5;
+  const jsGalaxy = (x: number, y: number, time: number, outRef: { r: number }) => {
+    let px = x - 0.5;
+    let py = y - 0.5;
+    
+    // Rotate by -0.6 radians
+    const cosA = Math.cos(-0.6);
+    const sinA = Math.sin(-0.6);
+    const rx = px * cosA - py * sinA;
+    const ry = px * sinA + py * cosA;
+    
+    // Compress Y for 3D tilt perspective
+    px = rx;
+    py = ry / 0.32;
+    
     const r = Math.sqrt(px*px + py*py);
+    outRef.r = r;
     const theta = Math.atan2(py, px);
     
-    const core = Math.exp(-r * 8.0) * 1.3;
-    let armsVal = Math.sin(theta * 2.0 - r * 7.0 + time * 1.2);
+    const core = Math.exp(-r * 9.0) * 1.5;
+    let armsVal = Math.sin(theta * 2.0 - r * 6.5 + time * 1.2);
     armsVal = Math.pow(Math.max(0.0, armsVal), 3.0);
-    const arms = armsVal * Math.exp(-r * 2.2) * 0.8;
+    const arms = armsVal * Math.exp(-r * 1.8) * 0.9;
     
-    const stars = jsNoise(x, y) * 0.15 * Math.exp(-r * 2.0);
+    const stars = jsNoise(x, y) * 0.22 * Math.exp(-r * 1.5);
     
     return Math.min(1.0, Math.max(0.0, core + arms + stars));
   };
@@ -700,7 +746,8 @@ export function AsciiShader() {
             val = 1.0 - (dist / 20.0);
           }
         } else if (mode === 4) {
-          val = jsGalaxy(nx, ny, timeRef.current * speed);
+          const outRef = { r: 0 };
+          val = jsGalaxy(nx, ny, timeRef.current * speed, outRef);
         } else {
           // Simulating text snapshot for images is hard without context
           val = Math.random();
