@@ -15,7 +15,7 @@ interface ColorTheme {
 
 interface Preset {
   name: string;
-  mode: 0 | 1 | 2 | 3; // 0 = Perlin, 1 = Plasma, 2 = Matrix, 3 = Image
+  mode: 0 | 1 | 2 | 3 | 4; // 0 = Perlin, 1 = Plasma, 2 = Matrix, 3 = Image, 4 = Galaxy
   chars: string;
   charWidth: number;
   charHeight: number;
@@ -38,6 +38,18 @@ const COLOR_THEMES: ColorTheme[] = [
 ];
 
 const PRESETS: Preset[] = [
+  {
+    name: 'Andromeda Galaxy',
+    mode: 4,
+    chars: ' .:-=+*#%@█',
+    charWidth: 8,
+    charHeight: 14,
+    scale: 3.5,
+    speed: 0.6,
+    brightness: 1.1,
+    themeIndex: 3, // Ocean currents
+    crt: false
+  },
   {
     name: 'Matrix Digital Rain',
     mode: 2,
@@ -190,6 +202,28 @@ const FRAGMENT_SHADER_SOURCE = `
     return brightness;
   }
 
+  float galaxy(vec2 uv, float time) {
+    vec2 p = uv - vec2(0.5);
+    p.x *= u_resolution.x / u_resolution.y;
+    
+    float r = length(p);
+    float theta = atan(p.y, p.x);
+    
+    float core = exp(-r * 8.0) * 1.3;
+    
+    float armsVal = sin(theta * 2.0 - r * 7.0 + time * 1.2);
+    armsVal = pow(max(0.0, armsVal), 3.0);
+    float arms = armsVal * exp(-r * 2.2) * 0.8;
+    
+    float stars = hash(floor(p * 250.0)) * 0.18 * exp(-r * 2.0);
+    float clusters = noise(p * 20.0 + time * 0.2) * 0.2 * exp(-r * 3.0);
+    
+    float val = core + arms + stars + clusters;
+    val += exp(-r * 2.5) * 0.15;
+    
+    return clamp(val, 0.0, 1.0);
+  }
+
   vec3 getColor(float value, vec2 uv, vec3 origImgColor) {
     if (u_mode == 3 && u_use_image_color == 1) {
       return origImgColor;
@@ -246,6 +280,8 @@ const FRAGMENT_SHADER_SOURCE = `
       vec4 texColor = texture2D(u_image_texture, vec2(uv.x, uv.y));
       val = (texColor.r + texColor.g + texColor.b) / 3.0;
       origImgColor = texColor.rgb;
+    } else if (u_mode == 4) {
+      val = galaxy(noiseUv, u_time * u_speed);
     }
     
     val *= u_brightness;
@@ -265,7 +301,7 @@ const FRAGMENT_SHADER_SOURCE = `
 
 export function AsciiShader() {
   // Preset or customized states
-  const [mode, setMode] = useState<0 | 1 | 2 | 3>(0);
+  const [mode, setMode] = useState<0 | 1 | 2 | 3 | 4>(0);
   const [chars, setChars] = useState(' .:-=+*#%@');
   const [charWidth, setCharWidth] = useState(8);
   const [charHeight, setCharHeight] = useState(14);
@@ -618,6 +654,22 @@ export function AsciiShader() {
     return (v / 3.0) + 0.5;
   };
 
+  const jsGalaxy = (x: number, y: number, time: number) => {
+    const px = x - 0.5;
+    const py = y - 0.5;
+    const r = Math.sqrt(px*px + py*py);
+    const theta = Math.atan2(py, px);
+    
+    const core = Math.exp(-r * 8.0) * 1.3;
+    let armsVal = Math.sin(theta * 2.0 - r * 7.0 + time * 1.2);
+    armsVal = Math.pow(Math.max(0.0, armsVal), 3.0);
+    const arms = armsVal * Math.exp(-r * 2.2) * 0.8;
+    
+    const stars = jsNoise(x, y) * 0.15 * Math.exp(-r * 2.0);
+    
+    return Math.min(1.0, Math.max(0.0, core + arms + stars));
+  };
+
   // Generate ASCII block representational copy
   const getSnapshotText = () => {
     const canvas = canvasRef.current;
@@ -647,6 +699,8 @@ export function AsciiShader() {
           if (dist >= 0.0 && dist <= 20.0) {
             val = 1.0 - (dist / 20.0);
           }
+        } else if (mode === 4) {
+          val = jsGalaxy(nx, ny, timeRef.current * speed);
         } else {
           // Simulating text snapshot for images is hard without context
           val = Math.random();
@@ -803,16 +857,16 @@ export function AsciiShader() {
             
             <div className="space-y-3">
               <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">Shader Algorithm</label>
-              <div className="grid grid-cols-4 gap-1.5">
-                {(['fBm', 'Plasma', 'Matrix', 'Image'] as const).map((label, idx) => (
+              <div className="grid grid-cols-5 gap-1">
+                {(['fBm', 'Plasma', 'Matrix', 'Image', 'Galaxy'] as const).map((label, idx) => (
                   <Button
                     key={label}
                     size="sm"
                     variant={mode === idx ? 'default' : 'outline'}
                     onClick={() => {
-                      setMode(idx as 0 | 1 | 2 | 3);
+                      setMode(idx as 0 | 1 | 2 | 3 | 4);
                     }}
-                    className="text-xs px-1 h-8"
+                    className="text-[10px] px-0.5 h-8 shrink-0"
                   >
                     {label}
                   </Button>
