@@ -279,14 +279,7 @@ const FRAGMENT_SHADER_SOURCE = `
     vec2 localCoords = fract(gl_FragCoord.xy / u_grid_size);
     vec2 uv = (gridCoords + 0.5) * u_grid_size / u_resolution;
     
-    // Mouse warp distortion
-    float distToMouse = distance(uv * (u_resolution / u_resolution.y), u_mouse * (u_resolution / u_resolution.y));
-    float warp = 0.0;
-    if (distToMouse < 0.25) {
-      warp = (1.0 - distToMouse / 0.25) * 0.12;
-    }
-    
-    vec2 noiseUv = uv + vec2(0.0, warp);
+    vec2 noiseUv = uv;
     float val = 0.0;
     vec3 origImgColor = vec3(0.0);
     float r = 0.0;
