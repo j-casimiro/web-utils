@@ -138,7 +138,7 @@ export function HttpStatusExplorer() {
       <div className="flex flex-1 overflow-hidden">
         
         {/* Left Sidebar: List */}
-        <div className="w-1/3 min-w-50 max-w-70 border-r border-border overflow-y-auto bg-muted/10">
+        <div className="custom-scrollbar w-1/3 min-w-50 max-w-70 border-r border-border overflow-y-auto bg-muted/10">
           {filteredCodes.length > 0 ? (
             <div className="p-2 space-y-1">
               {filteredCodes.map(code => (
@@ -172,7 +172,7 @@ export function HttpStatusExplorer() {
         </div>
 
         {/* Right Pane: Details */}
-        <div className="flex-1 overflow-y-auto bg-background p-6 lg:p-10">
+        <div className="custom-scrollbar flex-1 overflow-y-auto bg-background p-6 lg:p-10">
           {selectedCode ? (
             <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
               

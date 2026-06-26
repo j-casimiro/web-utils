@@ -391,7 +391,7 @@ export function LoremGenerator() {
             </Button>
           </div>
         </div>
-        <div className="flex-1 w-full rounded-md border border-zinc-800 bg-zinc-950 p-4 relative overflow-auto font-mono text-xs select-text leading-relaxed">
+        <div className="custom-scrollbar flex-1 w-full rounded-md border border-zinc-800 bg-zinc-950 p-4 relative overflow-auto font-mono text-xs select-text leading-relaxed">
           {generatedText ? (
             <pre className="whitespace-pre-wrap text-zinc-300 select-text font-mono">
               {generatedText}

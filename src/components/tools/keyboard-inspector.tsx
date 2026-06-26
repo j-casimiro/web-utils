@@ -448,7 +448,7 @@ export function KeyboardInspector() {
           </div>
 
           {/* Interactive Keyboard */}
-          <div className="w-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+          <div className="custom-scrollbar w-full overflow-x-auto pb-2">
             <div
               style={{
                 width: 'calc(14.954 * var(--key-unit, 44px) + 13 * 4px + 26px)',
@@ -654,7 +654,7 @@ export function KeyboardInspector() {
             </div>
 
             {lastEvent ? (
-              <pre className="text-[11px] font-mono p-4 bg-muted/30 border border-border rounded overflow-x-auto text-foreground max-h-72 flex-1">
+              <pre className="custom-scrollbar text-[11px] font-mono p-4 bg-muted/30 border border-border rounded overflow-x-auto text-foreground max-h-72 flex-1">
                 {JSON.stringify(lastEvent, null, 2)}
               </pre>
             ) : (
@@ -690,7 +690,7 @@ export function KeyboardInspector() {
             </div>
 
             {history.length > 0 ? (
-              <div className="overflow-x-auto">
+              <div className="custom-scrollbar overflow-x-auto">
                 <table className="w-full text-xs text-left border-collapse">
                   <thead>
                     <tr className="text-muted-foreground border-b border-border">

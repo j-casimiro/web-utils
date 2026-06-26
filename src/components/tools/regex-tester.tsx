@@ -393,7 +393,7 @@ fn main() {
               </span>
             </div>
             
-            <div className="w-full flex-1 min-h-[140px] p-3 text-sm font-mono border border-border bg-background text-foreground rounded-lg overflow-y-auto whitespace-pre-wrap select-text leading-relaxed">
+            <div className="custom-scrollbar w-full flex-1 min-h-[140px] p-3 text-sm font-mono border border-border bg-background text-foreground rounded-lg overflow-y-auto whitespace-pre-wrap select-text leading-relaxed">
               {getHighlightedSpans().map((span, i) => {
                 if (span.isMatch) {
                   return (
@@ -424,7 +424,7 @@ fn main() {
             </div>
 
             {matches.length > 0 ? (
-              <div className="flex-1 overflow-y-auto max-h-[220px]">
+              <div className="custom-scrollbar flex-1 overflow-y-auto max-h-[220px]">
                 <table className="w-full text-xs text-left border-collapse font-mono">
                   <thead>
                     <tr className="text-muted-foreground border-b border-border bg-muted/30">
@@ -526,7 +526,7 @@ fn main() {
             </div>
 
             {/* Snippet Display */}
-            <pre className="w-full flex-1 max-h-[160px] p-3 text-[11px] font-mono border border-border bg-background text-foreground rounded-lg overflow-auto leading-relaxed select-text">
+            <pre className="custom-scrollbar w-full flex-1 max-h-[160px] p-3 text-[11px] font-mono border border-border bg-background text-foreground rounded-lg overflow-auto leading-relaxed select-text">
               {getCodeSnippet()}
             </pre>
           </div>

@@ -164,7 +164,7 @@ export function StringComparison() {
               <Label className="text-zinc-400 text-xs">
                 Diff Highlights (Left)
               </Label>
-              <div className="w-full min-h-32 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm font-mono whitespace-pre-wrap break-all overflow-y-auto">
+              <div className="custom-scrollbar w-full min-h-32 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm font-mono whitespace-pre-wrap break-all overflow-y-auto">
                 {leftDiff.map((item, idx) => (
                   <span
                     key={idx}
@@ -183,7 +183,7 @@ export function StringComparison() {
               <Label className="text-zinc-400 text-xs">
                 Diff Highlights (Right)
               </Label>
-              <div className="w-full min-h-32 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm font-mono whitespace-pre-wrap break-all overflow-y-auto">
+              <div className="custom-scrollbar w-full min-h-32 rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm font-mono whitespace-pre-wrap break-all overflow-y-auto">
                 {rightDiff.map((item, idx) => (
                   <span
                     key={idx}

@@ -457,7 +457,7 @@ export function HashGenerator() {
               {copied ? 'Copied' : 'Copy'}
             </Button>
           </div>
-          <div className="flex-1 w-full rounded-md border border-zinc-800 bg-zinc-950 p-3 relative font-mono text-xs overflow-auto flex items-start break-all">
+          <div className="custom-scrollbar flex-1 w-full rounded-md border border-zinc-800 bg-zinc-950 p-3 relative font-mono text-xs overflow-auto flex items-start break-all">
             {outputText ? (
               <span
                 className={`${

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Calendar, Play, Settings, AlertCircle, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -742,13 +743,13 @@ export function CronBuilder() {
                     <label className="text-[11px] font-mono text-muted-foreground">
                       Interval (Minutes): {minInterval}
                     </label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="59"
-                      value={minInterval}
-                      onChange={(e) => setMinInterval(parseInt(e.target.value, 10))}
-                      className="w-full h-1 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                    <Slider
+                      value={[minInterval]}
+                      min={1}
+                      max={59}
+                      step={1}
+                      onValueChange={(value) => setMinInterval(value[0])}
+                      className="py-2"
                     />
                   </div>
                 ) : (

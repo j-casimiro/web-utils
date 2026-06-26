@@ -217,7 +217,7 @@ export function JWTDecoder() {
         </div>
 
         {/* Right Column: Decoded Structure (lg:span-7) */}
-        <div className="lg:col-span-7 space-y-4 flex flex-col h-137.5 overflow-y-auto pr-1">
+        <div className="custom-scrollbar lg:col-span-7 space-y-4 flex flex-col h-137.5 overflow-y-auto pr-1">
           {error ? (
             <div className="p-4 bg-red-950/20 border border-red-800/50 text-red-400 font-mono text-xs rounded-md flex items-start space-x-2">
               <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
@@ -279,7 +279,7 @@ export function JWTDecoder() {
                     {copiedHeader ? 'Copied' : 'Copy'}
                   </Button>
                 </div>
-                <pre className="p-3 rounded border border-zinc-800 bg-zinc-950 text-xs font-mono text-indigo-300 overflow-x-auto">
+                <pre className="custom-scrollbar p-3 rounded border border-zinc-800 bg-zinc-950 text-xs font-mono text-indigo-300 overflow-x-auto">
                   {headerText}
                 </pre>
               </div>
@@ -305,7 +305,7 @@ export function JWTDecoder() {
                     {copiedPayload ? 'Copied' : 'Copy'}
                   </Button>
                 </div>
-                <pre className="p-3 rounded border border-zinc-800 bg-zinc-950 text-xs font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap">
+                <pre className="custom-scrollbar p-3 rounded border border-zinc-800 bg-zinc-950 text-xs font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap">
                   {payloadText}
                 </pre>
               </div>

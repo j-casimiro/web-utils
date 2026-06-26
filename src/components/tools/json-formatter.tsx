@@ -499,7 +499,7 @@ export function JSONFormatter() {
             </Button>
           </div>
 
-          <div className="flex-1 w-full rounded-md border border-zinc-800 bg-zinc-950 overflow-auto relative">
+          <div className="custom-scrollbar flex-1 w-full rounded-md border border-zinc-800 bg-zinc-950 overflow-auto relative">
             {error ? (
               <div className="absolute inset-0 p-4 bg-red-950/10 text-red-400 font-mono text-xs flex flex-col space-y-2">
                 <span className="font-semibold text-red-500">

@@ -3,6 +3,7 @@ import { Sparkles, Terminal, Copy, Check, Download, Upload, Sliders, Monitor } f
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
 import { BlackholeShader } from './blackhole-shader';
 import { TuringShader } from './turing-shader';
 
@@ -960,22 +961,8 @@ export function AsciiShader() {
 
   return (
     <div className="flex flex-col gap-6 w-full">
-      {/* Custom Scrollbar and CRT scanline styling */}
+      {/* CRT scanline styling */}
       <style dangerouslySetInnerHTML={{__html: `
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(156, 163, 175, 0.15);
-          border-radius: 9999px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(156, 163, 175, 0.35);
-        }
-        
         .crt-effect::after {
           content: " ";
           display: block;
@@ -1184,24 +1171,24 @@ export function AsciiShader() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="text-[10px] text-muted-foreground block mb-1">Width</label>
-                  <input
-                    type="range"
-                    min="5"
-                    max="24"
-                    value={charWidth}
-                    onChange={(e) => setCharWidth(Number(e.target.value))}
-                    className="w-full accent-primary bg-secondary/50 rounded-lg h-1.5"
+                  <Slider
+                    value={[charWidth]}
+                    min={5}
+                    max={24}
+                    step={1}
+                    onValueChange={(value) => setCharWidth(value[0])}
+                    className="py-1"
                   />
                 </div>
                 <div>
                   <label className="text-[10px] text-muted-foreground block mb-1">Height</label>
-                  <input
-                    type="range"
-                    min="8"
-                    max="36"
-                    value={charHeight}
-                    onChange={(e) => setCharHeight(Number(e.target.value))}
-                    className="w-full accent-primary bg-secondary/50 rounded-lg h-1.5"
+                  <Slider
+                    value={[charHeight]}
+                    min={8}
+                    max={36}
+                    step={1}
+                    onValueChange={(value) => setCharHeight(value[0])}
+                    className="py-1"
                   />
                 </div>
               </div>
@@ -1236,14 +1223,13 @@ export function AsciiShader() {
                   <span className="font-semibold text-muted-foreground">Noise Zoom / Scale</span>
                   <span className="font-mono">{scale.toFixed(1)}</span>
                 </div>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="12.0"
-                  step="0.1"
-                  value={scale}
-                  onChange={(e) => setScale(Number(e.target.value))}
-                  className="w-full accent-primary bg-secondary/50 rounded-lg h-1.5"
+                <Slider
+                  value={[scale]}
+                  min={0.5}
+                  max={12}
+                  step={0.1}
+                  onValueChange={(value) => setScale(value[0])}
+                  className="py-1"
                 />
               </div>
             )}
@@ -1253,14 +1239,13 @@ export function AsciiShader() {
                 <span className="font-semibold text-muted-foreground">Animation Speed</span>
                 <span className="font-mono">{speed.toFixed(1)}x</span>
               </div>
-              <input
-                type="range"
-                min="0.0"
-                max="4.0"
-                step="0.1"
-                value={speed}
-                onChange={(e) => setSpeed(Number(e.target.value))}
-                className="w-full accent-primary bg-secondary/50 rounded-lg h-1.5"
+              <Slider
+                value={[speed]}
+                min={0}
+                max={4}
+                step={0.1}
+                onValueChange={(value) => setSpeed(value[0])}
+                className="py-1"
               />
             </div>
 
@@ -1269,14 +1254,13 @@ export function AsciiShader() {
                 <span className="font-semibold text-muted-foreground">Brightness Gain</span>
                 <span className="font-mono">{brightness.toFixed(1)}</span>
               </div>
-              <input
-                type="range"
-                min="0.2"
-                max="2.0"
-                step="0.05"
-                value={brightness}
-                onChange={(e) => setBrightness(Number(e.target.value))}
-                className="w-full accent-primary bg-secondary/50 rounded-lg h-1.5"
+              <Slider
+                value={[brightness]}
+                min={0.2}
+                max={2}
+                step={0.05}
+                onValueChange={(value) => setBrightness(value[0])}
+                className="py-1"
               />
             </div>
 

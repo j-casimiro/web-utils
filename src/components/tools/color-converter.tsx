@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Copy, Check, Shuffle, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 
 interface RGB {
   r: number;
@@ -401,18 +402,19 @@ export function ColorConverter() {
                   <span>Hue</span>
                   <span>{activeHsl.h}°</span>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="360"
-                  value={activeHsl.h}
-                  onChange={(e) => {
-                    const h = parseInt(e.target.value, 10);
+                <Slider
+                  value={[activeHsl.h]}
+                  min={0}
+                  max={360}
+                  step={1}
+                  onValueChange={(value) => {
+                    const h = value[0];
                     const rgb = hslToRgb({ h, s: activeHsl.s, l: activeHsl.l });
                     updateColorFromRgb(rgb);
                   }}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-zinc-100 [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-zinc-800 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-zinc-100 [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-zinc-800 [&::-moz-range-thumb]:shadow-lg"
-                  style={{
+                  className="py-2"
+                  rangeClassName="bg-transparent"
+                  trackStyle={{
                     background:
                       'linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000)',
                   }}
@@ -425,18 +427,19 @@ export function ColorConverter() {
                   <span>Saturation</span>
                   <span>{activeHsl.s}%</span>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={activeHsl.s}
-                  onChange={(e) => {
-                    const s = parseInt(e.target.value, 10);
+                <Slider
+                  value={[activeHsl.s]}
+                  min={0}
+                  max={100}
+                  step={1}
+                  onValueChange={(value) => {
+                    const s = value[0];
                     const rgb = hslToRgb({ h: activeHsl.h, s, l: activeHsl.l });
                     updateColorFromRgb(rgb);
                   }}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-zinc-100 [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-zinc-800 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-zinc-100 [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-zinc-800 [&::-moz-range-thumb]:shadow-lg"
-                  style={{
+                  className="py-2"
+                  rangeClassName="bg-transparent"
+                  trackStyle={{
                     background: `linear-gradient(to right, hsl(${activeHsl.h}, 0%, ${activeHsl.l}%), hsl(${activeHsl.h}, 100%, ${activeHsl.l}%))`,
                   }}
                 />
@@ -448,18 +451,19 @@ export function ColorConverter() {
                   <span>Lightness</span>
                   <span>{activeHsl.l}%</span>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={activeHsl.l}
-                  onChange={(e) => {
-                    const l = parseInt(e.target.value, 10);
+                <Slider
+                  value={[activeHsl.l]}
+                  min={0}
+                  max={100}
+                  step={1}
+                  onValueChange={(value) => {
+                    const l = value[0];
                     const rgb = hslToRgb({ h: activeHsl.h, s: activeHsl.s, l });
                     updateColorFromRgb(rgb);
                   }}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-zinc-100 [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-zinc-800 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-zinc-100 [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-zinc-800 [&::-moz-range-thumb]:shadow-lg"
-                  style={{
+                  className="py-2"
+                  rangeClassName="bg-transparent"
+                  trackStyle={{
                     background: `linear-gradient(to right, #000000, hsl(${activeHsl.h}, ${activeHsl.s}%, 50%), #ffffff)`,
                   }}
                 />
@@ -692,7 +696,7 @@ export function ColorConverter() {
         </div>
 
         {/* Right Column: Color Harmonies / Palettes (lg:span-7) */}
-        <div className="lg:col-span-7 bg-zinc-950 border border-zinc-800 rounded-lg p-5 space-y-6 h-162.5 overflow-y-auto pr-1">
+        <div className="custom-scrollbar lg:col-span-7 bg-zinc-950 border border-zinc-800 rounded-lg p-5 space-y-6 h-162.5 overflow-y-auto pr-1">
           <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider font-mono block border-b border-zinc-900 pb-2">
             Harmonic Palettes
           </span>
