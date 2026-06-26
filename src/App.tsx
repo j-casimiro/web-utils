@@ -21,6 +21,7 @@ import { StringComparison } from '@/components/tools/string-comparison';
 import { JSONFormatter } from '@/components/tools/json-formatter';
 import { JWTDecoder } from '@/components/tools/jwt-decoder';
 import { HashGenerator } from '@/components/tools/hash-generator';
+import { UUIDGenerator } from '@/components/tools/uuid-generator';
 import { LoremGenerator } from '@/components/tools/lorem-generator';
 import { ColorConverter } from '@/components/tools/color-converter';
 import { KeyboardInspector } from '@/components/tools/keyboard-inspector';
@@ -79,6 +80,13 @@ const TOOLS: ToolItem[] = [
     description:
       'Compute MD5, SHA-1, SHA-256, and SHA-512 hashes or HMAC signatures for text inputs.',
     component: HashGenerator,
+  },
+  {
+    id: 'uuid-generator',
+    title: 'UUID Generator',
+    description:
+      'Generate v4 random or v7 time-ordered UUIDs in bulk, copy them, and validate pasted UUID values.',
+    component: UUIDGenerator,
   },
   {
     id: 'lorem-generator',
