@@ -30,6 +30,7 @@ import { RegexTester } from '@/components/tools/regex-tester';
 import { HttpStatusExplorer } from '@/components/tools/http-status-explorer';
 import { UrlParser } from '@/components/tools/url-parser';
 import { AsciiShader } from '@/components/tools/ascii-shader';
+import { TimestampConverter } from '@/components/tools/timestamp-converter';
 
 interface ToolItem {
   id: string;
@@ -45,6 +46,13 @@ const TOOLS: ToolItem[] = [
     description:
       'Render procedural WebGL shaders (Perlin noise flow, plasma waves, matrix rain) or custom images as interactive colored ASCII grids.',
     component: AsciiShader,
+  },
+  {
+    id: 'timestamp-converter',
+    title: 'Timestamp & Date-Time Converter',
+    description:
+      'Convert Unix timestamps, ISO strings, and local dates into readable local, UTC, and relative time formats.',
+    component: TimestampConverter,
   },
   {
     id: 'url-parser',
