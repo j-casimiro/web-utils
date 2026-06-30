@@ -31,6 +31,7 @@ import { HttpStatusExplorer } from '@/components/tools/http-status-explorer';
 import { UrlParser } from '@/components/tools/url-parser';
 import { AsciiShader } from '@/components/tools/ascii-shader';
 import { TimestampConverter } from '@/components/tools/timestamp-converter';
+import { CsvTsvViewer } from '@/components/tools/csv-tsv-viewer';
 
 interface ToolItem {
   id: string;
@@ -53,6 +54,13 @@ const TOOLS: ToolItem[] = [
     description:
       'Convert Unix timestamps, ISO strings, and local dates into readable local, UTC, and relative time formats.',
     component: TimestampConverter,
+  },
+  {
+    id: 'csv-tsv-viewer',
+    title: 'CSV / TSV Viewer & Converter',
+    description:
+      'Paste spreadsheet data, preview it as a table, convert between CSV, TSV, and JSON, and handle quoted fields safely.',
+    component: CsvTsvViewer,
   },
   {
     id: 'url-parser',
