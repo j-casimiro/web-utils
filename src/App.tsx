@@ -32,6 +32,7 @@ import { UrlParser } from '@/components/tools/url-parser';
 import { AsciiShader } from '@/components/tools/ascii-shader';
 import { TimestampConverter } from '@/components/tools/timestamp-converter';
 import { CsvTsvViewer } from '@/components/tools/csv-tsv-viewer';
+import { FakeDataGenerator } from '@/components/tools/fake-data-generator';
 
 interface ToolItem {
   id: string;
@@ -61,6 +62,13 @@ const TOOLS: ToolItem[] = [
     description:
       'Paste spreadsheet data, preview it as a table, convert between CSV, TSV, and JSON, and handle quoted fields safely.',
     component: CsvTsvViewer,
+  },
+  {
+    id: 'fake-data-generator',
+    title: 'Fake Data Generator',
+    description:
+      'Create realistic fake data for testing and development with 40+ field types and export to JSON, CSV, SQL, or XML.',
+    component: FakeDataGenerator,
   },
   {
     id: 'url-parser',
@@ -221,7 +229,7 @@ export default function App() {
       <main className={`flex-1 w-full mx-auto px-4 transition-all duration-300 ${
         activeToolId ? 'py-6' : 'py-16'
       } ${
-        activeToolId === 'keyboard-inspector' || activeToolId === 'ascii-shader' || activeToolId === 'blackhole-shader' ? 'max-w-none md:px-8 lg:px-12' : 'max-w-5xl'
+        activeToolId === 'keyboard-inspector' || activeToolId === 'ascii-shader' || activeToolId === 'blackhole-shader' || activeToolId === 'fake-data-generator' ? 'max-w-none md:px-8 lg:px-12' : 'max-w-5xl'
       }`}>
         {ActiveToolComponent && activeTool ? (
           <ToolWrapper
@@ -230,7 +238,7 @@ export default function App() {
             onBack={() => setActiveToolId(null)}
             theme={theme}
             onToggleTheme={handleToggleTheme}
-            noCard={activeTool.id === 'ascii-shader' || activeTool.id === 'blackhole-shader'}
+            noCard={activeTool.id === 'ascii-shader' || activeTool.id === 'blackhole-shader' || activeTool.id === 'fake-data-generator'}
           >
             <ActiveToolComponent />
           </ToolWrapper>
