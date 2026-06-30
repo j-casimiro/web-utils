@@ -79,7 +79,8 @@ function parseDelimited(text: string, delimiter: ',' | '\t') {
   if (inQuotes) {
     return {
       rows: [],
-      error: 'Unclosed quoted field detected. Check for a missing double quote.',
+      error:
+        'Unclosed quoted field detected. Check for a missing double quote.',
     };
   }
 
@@ -218,9 +219,13 @@ function serializeJson(rows: string[][], useFirstRowAsHeader: boolean) {
   }
 
   const headers = createUniqueHeaders(paddedRows[0], columnCount);
-  const objects = paddedRows.slice(1).map((row) =>
-    Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ''])),
-  );
+  const objects = paddedRows
+    .slice(1)
+    .map((row) =>
+      Object.fromEntries(
+        headers.map((header, index) => [header, row[index] ?? '']),
+      ),
+    );
 
   return JSON.stringify(objects, null, 2);
 }
@@ -258,12 +263,13 @@ export function CsvTsvViewer() {
   const previewRows = useMemo(() => {
     if (!parsed) return [];
 
-    const rows =
-      useFirstRowAsHeader ? parsed.rows.slice(1) : parsed.rows;
+    const rows = useFirstRowAsHeader ? parsed.rows.slice(1) : parsed.rows;
 
-    return rows.slice(0, 12).map((row) =>
-      Array.from({ length: columnCount }, (_, index) => row[index] ?? ''),
-    );
+    return rows
+      .slice(0, 12)
+      .map((row) =>
+        Array.from({ length: columnCount }, (_, index) => row[index] ?? ''),
+      );
   }, [columnCount, parsed, useFirstRowAsHeader]);
 
   const output = useMemo(() => {
@@ -305,7 +311,10 @@ export function CsvTsvViewer() {
     <div className="space-y-6">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div className="space-y-2">
-          <Label htmlFor="source-format" className="text-xs text-muted-foreground">
+          <Label
+            htmlFor="source-format"
+            className="text-xs text-muted-foreground"
+          >
             Source format
           </Label>
           <Select
@@ -327,7 +336,10 @@ export function CsvTsvViewer() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="output-format" className="text-xs text-muted-foreground">
+          <Label
+            htmlFor="output-format"
+            className="text-xs text-muted-foreground"
+          >
             Output format
           </Label>
           <Select
@@ -392,7 +404,10 @@ export function CsvTsvViewer() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="delimited-input" className="text-sm text-foreground">
+            <Label
+              htmlFor="delimited-input"
+              className="text-sm text-foreground"
+            >
               Spreadsheet input
             </Label>
             <div className="text-[11px] font-mono text-muted-foreground">
@@ -413,7 +428,10 @@ export function CsvTsvViewer() {
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="converted-output" className="text-sm text-foreground">
+            <Label
+              htmlFor="converted-output"
+              className="text-sm text-foreground"
+            >
               Converted output
             </Label>
             <div className="flex gap-2">
@@ -500,7 +518,11 @@ export function CsvTsvViewer() {
                             key={`${rowIndex}-${cellIndex}`}
                             className="border-r border-border px-3 py-2 align-top font-mono text-[11px] text-muted-foreground last:border-r-0"
                           >
-                            {cell || <span className="text-muted-foreground/60">empty</span>}
+                            {cell || (
+                              <span className="text-muted-foreground/60">
+                                empty
+                              </span>
+                            )}
                           </td>
                         ))}
                       </tr>
@@ -559,7 +581,10 @@ export function CsvTsvViewer() {
               Notes
             </h3>
             <div className="mt-3 space-y-2 text-[12px] leading-normal text-muted-foreground">
-              <p>Quoted fields support escaped double quotes and embedded line breaks.</p>
+              <p>
+                Quoted fields support escaped double quotes and embedded line
+                breaks.
+              </p>
               <p>CSV and TSV exports are re-serialized safely before copy.</p>
               <p>
                 {raggedRows
